@@ -1,0 +1,123 @@
+---
+title: "AED1"
+author: "JoseMarq"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(readr)
+```
+
+
+
+```{r}
+ruta <- "./Normales_Climatologico_2022"
+ruta2 <- "./Mensuales_Climatologico_2022"
+
+archivos_norm <- list.files(ruta, pattern = "*.csv", full.names = TRUE)
+archivos_mes <- list.files(ruta2, pattern = "*.csv", full.names = T)
+# Crea una lista para almacenar los datasets
+lista_normales <- list()
+lista_mensuales <- list()
+
+# Utiliza un bucle para importar cada archivo CSV y almacenarlo en la lista
+for (archivo_csv in archivos_norm) {
+  dataset <- tools::file_path_sans_ext(basename(archivo_csv))
+  lista_normales[[dataset]] <- read.csv(archivo_csv, fileEncoding = "ISO-8859-1", header = T, sep = ";")
+}
+
+for (archivo_csv in archivos_mes) {
+  dataset <- tools::file_path_sans_ext(basename(archivo_csv))
+  lista_mensuales[[dataset]] <- read.csv(archivo_csv, fileEncoding = "ISO-8859-1", header = T, sep = ";")
+}
+
+#TENEMOS DOS LISTAS QUE CONTIENEN LOS DATASET MENSUALES Y NORMALES (1991-2020) 
+#LOS DATASET MENSUALES LOS USAREMOS PARA REPRESENTAR VARIABLES
+#LOS DATASET NORMALES LOS USAREMOS PARA COMPARAR RESULTADOS
+#LOS DATASET NORMALES CONTIENEN LOS ESTADÍSTICOS PARA EL PERIODO 1991-2020
+
+```
+```{r}
+#COMENTADO
+#LIMPIEZA DE NA's para ambas listas de dataframes 
+
+"lista_normal_sin_NA<-list()
+lista_mensual_sin_NA<-list()
+
+for (i in 1:length(lista_normales)){
+  df <- lista_normales[[i]]
+  df[is.na(df)] <- 0
+  lista_normal_sin_NA[[i]] <- df
+}
+
+lista_mensual_sin_NA <- list()
+for (i in 1:length(lista_mensuales)){
+  df <- lista_mensuales[[i]]
+  df[is.na(df)] <- 0
+  lista_mensual_sin_NA[[i]] <- df
+}
+
+#Con esto impedimos que en la limpieza de los NA's se modifiquen los nombres de cada dataframe
+#así no le perdemos la pista a las variables de cada dataframe !!!!!!! -> nombranndo a los dataframes en la lista que los contiene se evita que estos pierdan su nombre al moverlos a otra lista.
+
+nombres_normales <- c(names(lista_normales))
+lista_normal_sin_NA <- setNames(lista_normal_sin_NA, nombres_normales)
+
+nombres_mensuales <- c(names(lista_mensuales))
+lista_mensual_sin_NA <- setNames(lista_mensual_sin_NA, nombres_mensuales)
+
+
+#EN UNA LISTA TENDREMOS LOS DATAFRAMES PARA CADA VARIALE CLIMATOLÓGICA QUE NOS INTERESA, PARA CADA MES DEL AÑO. LAS ENTRADAS DEL DATASET SE CORRESPONDEN CON EL LUGAR DONDE LAS MEDIDAS FUERON TOMADAS."
+```
+
+```{r}
+#CONTAREMOS EL NÚMERO DE INDICATIVOS POR DATASET PARA SABER CÓMO COMENZAR
+
+nrow(lista_mensuales$TM_MES_2022)
+nrow(lista_mensuales$TM_MAX_2022)
+nrow(lista_mensuales$TM_MIN_2022) #93
+
+nrow(lista_mensuales$P_MES_2022) #92
+
+nrow(lista_mensuales$P_MAX_2022) #93
+
+nrow(lista_mensuales$HR_2022) #89
+
+nrow(lista_mensuales$INSO_2022) #85
+
+nrow(lista_mensuales$W_MED_2022) #84
+
+#EMPEZAREMOS CON 84 INDICATIVOS PUES ESTAS SON NUESTRAS VARIABLES DE INTERÉS.
+
+lista_interes <- list(TM_MES_2022 = lista_mensuales$TM_MES_2022,TM_MAX_2022 = lista_mensuales$TM_MAX_2022,TM_MIN_2022 = lista_mensuales$TM_MIN_2022,P_MES_2022 = lista_mensuales$P_MES_2022,P_MAX_2022 = lista_mensuales$P_MAX_2022,HR_2022 = lista_mensuales$HR_2022,W_MED_2022 = lista_mensuales$W_MED_2022)
+
+#esta función corta los dataframes según los Indicativos del dataframe más pequeño
+mantener_filas_por_nombre <- function(df, nombres) {
+  return(df[df$Indicativo %in% nombres, ])
+}
+#tomamos el vector de nombres indicativos
+Indicativos<- (c(W_MED_2022[["Indicativo"]]))
+length(Indicativos)
+
+nueva_lista_dataframes <- lapply(lista_interes, mantener_filas_por_nombre, nombres = Indicativos)
+
+
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
