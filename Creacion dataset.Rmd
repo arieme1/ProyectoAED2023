@@ -1,0 +1,52 @@
+---
+title: "Prueba_importaciondatos"
+author: "Mar Riveiro Cabado"
+date: "2023-11-02"
+output: html_document
+---
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(readr)
+```
+
+
+```{r}
+estaciones <- read_delim("data/Maestro_Climatologico_2022.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+```
+
+
+```{r}
+estudio <- c("2016", "2017", "2018", "2019", "2020", "2021", "2022")
+
+for (año in estudio) {
+  ruta_carpeta <- paste("data/Variables", año, sep = "/")
+  archivos_climaticos <- list.files(ruta_carpeta, pattern = ".*.csv")
+  
+ assign(paste("datos_", año, sep = ""), data.frame(Indicativo = estaciones$INDICATIVO))
+  
+  for (archivo in archivos_climaticos) {
+    ruta_completa_archivo <- file.path(ruta_carpeta, archivo)
+    variable <- read_delim(ruta_completa_archivo, delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE)
+    prefijo <- substr(archivo, 1, nchar(archivo) - 8)
+    colnames(variable)[-1] <- paste(prefijo, colnames(variable)[-1], sep = "_")
+    datos_variable <- as.data.frame(variable)
+    
+    assign(paste("datos_", año, sep = ""), merge(get(paste("datos_", año, sep = "")), datos_variable, by = "Indicativo", sort = FALSE, all.x = TRUE, all.y = TRUE))
+  }
+}
+
+```
+
+```{r}
+View(datos_2016)
+View(datos_2017)
+View(datos_2018)
+View(datos_2019)
+View(datos_2020)
+View(datos_2022)
+View(datos_2021)
+```
+
