@@ -11,6 +11,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 ```{r}
+library(dplyr)
+library(tidyr)
 library(readr)
 ```
 
@@ -101,6 +103,7 @@ lista_interes <- list(TM_MES_2022 = lista_mensuales$TM_MES_2022,TM_MAX_2022 = li
 mantener_filas_por_nombre <- function(df, nombres) {
   return(df[df$Indicativo %in% nombres, ])
 }
+W_MED_2022 <- lista_mensuales$W_MED_2022
 #tomamos el vector de nombres indicativos
 Indicativos<- (c(W_MED_2022[["Indicativo"]]))
 length(Indicativos)
@@ -111,13 +114,17 @@ nueva_lista_dataframes <- lapply(lista_interes, mantener_filas_por_nombre, nombr
 ```
 
 ```{r}
-
+estaciones <- read_delim("data/Maestro_Climatologico_2022.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+datos<-data.frame(Indicativo=estaciones$INDICATIVO)
+for (variable in nueva_lista_dataframes) {
+  prefijo <- substr(archivo, 1, 2)
+  
+  colnames(variable)[-1] <- paste(prefijo, colnames(variable)[-1], sep = "_")
+    
+  #colnames(variable)[-1] <- paste("p_", colnames(variable)[-1], sep = "")
+  datos_variable<-as.data.frame(variable) 
+  datos<-merge(datos,datos_variable, by="Indicativo", sort=FALSE,all.x = TRUE, all.y = TRUE)
+}
 ```
-
-
-
-
-
-
 
 
