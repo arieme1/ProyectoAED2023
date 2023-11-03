@@ -1,0 +1,74 @@
+---
+title: "Prueba_importaciondatos"
+author: "Mar Riveiro Cabado"
+date: "2023-11-02"
+output: html_document
+---
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(readr)
+```
+
+
+```{r}
+estaciones <- read_delim("data/Maestro_Climatologico_2022.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+```
+
+
+```{r}
+ruta_carpeta<-"data/Variables"
+archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
+class(archivos_climaticos)
+archivos_climaticos
+```
+```{r}
+#en este chunck cargamos el dataset más pequeño que nos sirve de referencia para cortar los otros
+#ES NECESARIO CARGAR AL MENOS EL DATASET MÁS PEQUEÑO PARA OBTENER SU LONGITUD
+
+W_MED_2022 <- read_delim("data/Variables/W_MED_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+TM_MIN_2022 <- read_delim("data/Variables/TM_MIN_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE)
+
+mantener_filas_por_nombre <- function(df, nombres) {
+  return(df[df$Indicativo %in% nombres, ])
+}
+
+#tomamos el vector de nombres indicativos
+Indicativos<- (c(W_MED_2022[["Indicativo"]]))
+length(Indicativos)
+
+```
+
+
+```{r}
+
+datos<-data.frame(Indicativo=estaciones$INDICATIVO)
+
+mantener_filas_por_nombre <- function(df, nombres) {
+  return(df[df$Indicativo %in% nombres, ])
+}
+for (archivo in archivos_climaticos) {
+  
+    ruta_completa_archivo<-file.path(ruta_carpeta,archivo)
+    
+    variable <-read_delim(ruta_completa_archivo, delim = ";", escape_double = FALSE, trim_ws=TRUE, show_col_types=FALSE)
+    
+  prefijo <- substr(archivo, 1, 2)
+  
+  colnames(variable)[-1] <- paste(prefijo, colnames(variable)[-1], sep = "_") #renombra las columnas del dataframe quitando la primera columna ("Indicativo") y le añade el prefijo definido arriba.
+    
+  #colnames(variable)[-1] <- paste("p_", colnames(variable)[-1], sep = "")
+  datos_variable<-as.data.frame(variable) 
+  datos<-merge(datos,datos_variable, by="Indicativo", sort=FALSE,all.x = TRUE, all.y = TRUE)
+}
+```
+
+```{r}
+#EL DATAFRAME CON LOS INDICATIVOS DE TODOS LOS DATASETS QUE LO CONFORMAN
+datos<-(mantener_filas_por_nombre(datos, nombres = Indicativos))
+```
+
