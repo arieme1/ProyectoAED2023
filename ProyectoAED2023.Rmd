@@ -1,0 +1,51 @@
+---
+title: "Proyecto_AED_2023"
+author: "Alex Riera Merino"
+date: "2023-10-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Se importa el csv
+
+```{r}
+library(readr)
+# datos_mal <- read_delim("dades-horaris-qualitat-de-laire-desde-2016.csv", 
+#     delim = ";")
+# 
+# datos <- read_delim("dades-horaris-qualitat-de-laire-desde-2016.csv", 
+#     delim = ";", escape_double = FALSE, col_types = cols(Fecha = col_date(format = "%Y-%m-%d")), 
+#     trim_ws = TRUE)
+# datos$Hora <- with(datos, {
+#   hora <- format(datos$Hora, format = "%H")
+#   minutos <- format(datos$Hora, format = "%M")
+#   segundos <- format(datos$Hora, format = "%S")
+#   paste(hora, minutos, segundos, sep = ":")
+# })
+# 
+# df_estacion <- datos %>%
+#   filter(year(datos$Fecha) == 2018)
+# 
+# summary(df_estacion)
+Sedes <- read_delim("./evmf_estadistica_anual_2016/Maestro_Climatologico_2016.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+precipitaciones <- read_delim("./evmf_estadistica_anual_2016/Mensuales_Climatologico_2016/P_MES_2016.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+#summary(Sedes)
+summary(precipitaciones)
+```
+
+
+
+
+```{r}
+library(dplyr)
+library(lubridate)
+df_estacion <- datos %>%
+  filter(year(datos$Fecha) == 2018)
+df_estacion
+```
+
