@@ -1,0 +1,91 @@
+---
+title: "ProyectoAED"
+author: "Alex Riera Merino"
+date: "2023-11-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+```
+
+```{r}
+dataset1 <- read_delim("./data/Variables/2022/HR_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+dataset2 <- read_delim("./data/Maestro_Climatologico_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+ruta_carpeta<-"./data/Variables/2022"
+
+archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
+
+nuevo_dataset <- dataset1 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_HR")
+
+dataset3 <- read_delim("./data/Variables/2022/INSO_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_2 <- dataset3 %>%
+  pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_IN")
+nuevo_dataset_2 <- nuevo_dataset_2[1:nrow(nuevo_dataset),]
+
+
+dataset_final <- left_join(nuevo_dataset,nuevo_dataset_2)
+
+
+ 
+dataset4 <- read_delim("./data/Variables/2022/P_MES_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_3 <- dataset4 %>%
+  pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_PMES") 
+
+nuevo_dataset_3 <- nuevo_dataset_3[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_3)
+
+dataset5 <- read_delim("./data/Variables/2022/TM_MAX_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_4 <- dataset5 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMAX")
+
+nuevo_dataset_4 <- nuevo_dataset_4[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_4)
+
+dataset6 <- read_delim("./data/Variables/2022/TM_MES_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_5 <- dataset6 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMES")
+
+nuevo_dataset_5 <- nuevo_dataset_5[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_5)
+ 
+dataset7 <- read_delim("./data/Variables/2022/TM_MIN_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_6 <- dataset7 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMIN")
+
+nuevo_dataset_6 <- nuevo_dataset_6[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_6)
+ 
+dataset8 <- read_delim("./data/Variables/2022/W_MED_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_7 <- dataset8 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_WM")
+
+nuevo_dataset_7 <- nuevo_dataset_7[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_7)
+
+```
+
+
+
+
