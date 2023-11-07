@@ -189,4 +189,15 @@ df_2016_anual <-df_2016_anual[,c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_
 
 ```
 
+```{r}
+
+library(ggplot2)
+grupo <- imputed_data_2016 %>% group_by(Indicativo, Meses)
+
+ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Mes", y = "Promedio de Valor", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  theme_minimal()
+```
+
 
