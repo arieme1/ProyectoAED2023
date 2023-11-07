@@ -47,41 +47,6 @@ datos<-(mantener_filas_por_nombre(datos, nombres = Indicativos))
 ```
 
 ```{r}
-años<-2016:2022
-
-for (año in años) {
-  ruta_carpeta <- paste0("data/Variables/", año)
-  archivos_climaticos <- list.files(ruta_carpeta, pattern = ".*.csv")
-  
-  datos_año <- data.frame(Indicativo = estaciones$INDICATIVO)
-  lista_año <- list()
-  
-  for (archivo in archivos_climaticos) {
-    ruta_completa_archivo <- file.path(ruta_carpeta, archivo)
-    
-    variable <- read_delim(ruta_completa_archivo, delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE)
-    lista_año[[ruta_completa_archivo]] <- variable
-    
-    prefijo <- substr(archivo, 1, 2)
-    colnames(variable)[-1] <- paste(prefijo, colnames(variable)[-1], sep = "_")
-    
-    datos_variable <- as.data.frame(variable)
-    datos_año <- merge(datos_año, datos_variable, by = "Indicativo", sort = FALSE, all.x = TRUE, all.y = TRUE)
-  }
-  indice_menor_filas <- which.min(sapply(lista_año, nrow))
-  dataframe_menor_filas <- lista_año[[indice_menor_filas]]
-  Indicativos<- dataframe_menor_filas$Indicativo 
-  datos_año <- datos_año[datos_año$Indicativo %in% Indicativos, ]
-  assign(paste0("datos_", año), datos_año)
-  View(datos_año)
-}
-
-```
-
-
-
-```{r}
-
 datos<-data.frame(Indicativo=estaciones$INDICATIVO)
 
 mantener_filas_por_nombre <- function(df, nombres) {
