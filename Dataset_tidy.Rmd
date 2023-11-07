@@ -15,6 +15,63 @@ library(tidyverse)
 library(dplyr)
 ```
 
+<<<<<<< HEAD
+
+```{r}
+estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+```
+
+
+```{r}
+carpeta_base<-"./data/Variables/"
+
+años<-2016:2022
+
+lista_dataframes <- list()
+
+for (año in años){
+  
+ruta_carpeta<-file.path(carpeta_base, as.character(año))
+archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
+
+
+df_año<-data.frame(Indicativo = character(0), Meses = character(0), Valores= numeric(0))
+
+
+for (archivo in archivos_climaticos) {
+  
+  ruta_completa_archivo<-file.path(ruta_carpeta,archivo)
+  variable <-read_delim(ruta_completa_archivo, delim = ";", escape_double = FALSE,
+                          trim_ws=TRUE, show_col_types=FALSE)
+  prefijo <- substr(archivo, 1, nchar(archivo) - 9)
+
+  df_variable <- variable %>%
+      pivot_longer(col = -c(Indicativo), names_to = "Meses", 
+                   values_to = prefijo) 
+  
+    if (archivo == archivos_climaticos[1]) {
+        
+      df_año <- df_variable
+      
+     } else {
+       
+      df_año <- left_join(df_año,df_variable, by=join_by("Indicativo","Meses"))
+     }
+  
+}
+  lista_dataframes[[as.character(año)]] <- df_año
+  assign(paste0("df_", año), df_año, envir = .GlobalEnv)
+  carpeta<-"./data/"
+  nombre_archivo <- file.path(carpeta, paste0("dataset_",año,".csv"))
+  write.csv(df_año, nombre_archivo, row.names = FALSE)
+}
+
+rm(df_variable,variable,df_año)
+```
+
+
+=======
 ```{r}
 dataset1 <- read_delim("./data/Variables/2022/HR_2022.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE)
@@ -89,3 +146,4 @@ dataset_final <- left_join(dataset_final,nuevo_dataset_7)
 
 
 
+>>>>>>> f853f921ad36fcc36c7ed7c6345592e2a109c4d3
