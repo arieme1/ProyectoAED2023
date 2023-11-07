@@ -47,7 +47,6 @@ datos<-(mantener_filas_por_nombre(datos, nombres = Indicativos))
 ```
 
 ```{r}
-
 datos<-data.frame(Indicativo=estaciones$INDICATIVO)
 
 mantener_filas_por_nombre <- function(df, nombres) {
@@ -242,4 +241,3 @@ Indicativos<- (c(dataframe_menor_filas[["Indicativo"]]))
 length(Indicativos)
 datos_2016<-(mantener_filas_por_nombre(datos_2016, nombres = Indicativos))
 ```
-
