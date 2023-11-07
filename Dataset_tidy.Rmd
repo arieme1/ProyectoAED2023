@@ -15,7 +15,7 @@ library(tidyverse)
 library(dplyr)
 ```
 
-<<<<<<< HEAD
+
 
 ```{r}
 estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
@@ -71,7 +71,6 @@ rm(df_variable,variable,df_año)
 ```
 
 
-=======
 ```{r}
 dataset1 <- read_delim("./data/Variables/2022/HR_2022.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE)
@@ -143,7 +142,3 @@ dataset_final <- left_join(dataset_final,nuevo_dataset_7)
 
 ```
 
-
-
-
->>>>>>> f853f921ad36fcc36c7ed7c6345592e2a109c4d3
