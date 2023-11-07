@@ -22,56 +22,9 @@ estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv",
     delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
 ```
 
-
 ```{r}
-carpeta_base<-"./data/Variables/"
+#proceso para la extración de datasets de 1 único año.
 
-años<-2016:2022
-
-lista_dataframes <- list()
-
-for (año in años){
-  
-ruta_carpeta<-file.path(carpeta_base, as.character(año))
-archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
-
-
-df_año<-data.frame(Indicativo = character(0), Meses = character(0), Valores= numeric(0))
-
-
-for (archivo in archivos_climaticos) {
-  
-  ruta_completa_archivo<-file.path(ruta_carpeta,archivo)
-  variable <-read_delim(ruta_completa_archivo, delim = ";", escape_double = FALSE,
-                          trim_ws=TRUE, show_col_types=FALSE)
-  prefijo <- substr(archivo, 1, nchar(archivo) - 9)
-
-  df_variable <- variable %>%
-      pivot_longer(col = -c(Indicativo), names_to = "Meses", 
-                   values_to = prefijo) 
-  
-    if (archivo == archivos_climaticos[1]) {
-        
-      df_año <- df_variable
-      
-     } else {
-       
-      df_año <- left_join(df_año,df_variable, by=join_by("Indicativo","Meses"))
-     }
-  
-}
-  lista_dataframes[[as.character(año)]] <- df_año
-  assign(paste0("df_", año), df_año, envir = .GlobalEnv)
-  carpeta<-"./data/"
-  nombre_archivo <- file.path(carpeta, paste0("dataset_",año,".csv"))
-  write.csv(df_año, nombre_archivo, row.names = FALSE)
-}
-
-rm(df_variable,variable,df_año)
-```
-
-
-```{r}
 dataset1 <- read_delim("./data/Variables/2022/HR_2022.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE)
 dataset2 <- read_delim("./data/Maestro_Climatologico_2022.csv", 
@@ -141,4 +94,99 @@ nuevo_dataset_7 <- nuevo_dataset_7[1:nrow(nuevo_dataset),]
 dataset_final <- left_join(dataset_final,nuevo_dataset_7)
 
 ```
+
+
+```{r}
+carpeta_base<-"./data/Variables/"
+
+años<-2016:2022
+
+lista_dataframes <- list()
+
+for (año in años){
+  
+ruta_carpeta<-file.path(carpeta_base, as.character(año))
+archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
+
+
+df_año<-data.frame(Indicativo = character(0), Meses = character(0), Valores= numeric(0))
+
+
+for (archivo in archivos_climaticos) {
+  
+  ruta_completa_archivo<-file.path(ruta_carpeta,archivo)
+  variable <-read_delim(ruta_completa_archivo, delim = ";", escape_double = FALSE,
+                          trim_ws=TRUE, show_col_types=FALSE)
+  prefijo <- substr(archivo, 1, nchar(archivo) - 9)
+
+  df_variable <- variable %>%
+      pivot_longer(col = -c(Indicativo), names_to = "Meses", 
+                   values_to = prefijo) 
+  
+    if (archivo == archivos_climaticos[1]) {
+        
+      df_año <- df_variable
+      
+     } else {
+       
+      df_año <- left_join(df_año,df_variable, by=join_by("Indicativo","Meses"))
+     }
+  
+}
+  lista_dataframes[[as.character(año)]] <- df_año
+  assign(paste0("df_", año), df_año, envir = .GlobalEnv)
+  carpeta<-"./data/"
+  nombre_archivo <- file.path(carpeta, paste0("dataset_",año,".csv"))
+  write.csv(df_año, nombre_archivo, row.names = FALSE)
+}
+
+rm(df_variable,variable,df_año)
+```
+
+HR -> humedad relativa mensual/anual (%)
+INSO -> Media mensual/anual de la insolación diaria (horas)
+P_MES -> Precipitación total mensual/anual (mm)
+TM_MAX -> Temperatura media mensual/anual de las máximas (°C)
+TM_MES -> Temperatura media mensual/anual (°C)
+TM_MIN -> Temperatura media mensual/anual de las mínimas (°C)
+
+```{r}
+library(mice)
+
+df_2016
+faltan_2016<- colMeans(is.na(df_2016)) * 100
+faltan_2016
+
+data_filtered <- df_2016 %>% filter(Meses != "anual") #filtro el dataset quitando los años
+
+imputed_data_filtered <- mice(data_filtered, m = 5) #hago la imputación de datos con mice
+
+imputed_data <- complete(imputed_data_filtered, action = 1) #introduzco los datos
+
+filtered_rows <- df_2016 %>% filter(Meses == "anual") #tomo el dataset que solo contiene los "anual"
+
+#ahora obtengo los valores anuales por indicativo para cada variable
+columnas <- c("HR", "INSO","TM_MAX","TM_MES","TM_MIN","W_MED")
+columnas2 <- c("P_MES")
+columnas_F <- c("HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")
+
+#dataframe con los promedios anuales por indicativo
+result <- imputed_data %>%
+  group_by(Indicativo) %>%
+  summarise(across(all_of(columnas), mean))
+
+#dataframe con la suma anual de precipitaciones
+result2 <-imputed_data %>%
+  group_by(Indicativo)%>%
+  summarise(across(all_of("P_MES"), sum))
+
+#los uno y los ordeno conforme al original
+
+df_2016_anual <- mutate(result, result2)
+df_2016_anual <-df_2016_anual[,c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")]
+
+
+
+```
+
 
