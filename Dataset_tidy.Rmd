@@ -158,7 +158,7 @@ faltan_2016
 
 data_filtered <- df_2016 %>% filter(Meses != "anual") #filtro el dataset quitando los años
 
-imputed_data_filtered <- mice(data_filtered, m = 5) #hago la imputación de datos con mice
+imputed_data_filtered <- mice(data_filtered, m = 50, method = "pmm") #hago la imputación de datos con mice mediante el metodo de predictive mean matching
 
 imputed_data <- complete(imputed_data_filtered, action = 1) #introduzco los datos
 
@@ -191,16 +191,57 @@ df_2016_anual <-df_2016_anual[,c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_
 ```{r}
 
 library(ggplot2)
-<<<<<<< HEAD
-grupo <- imputed_data %>% group_by(Indicativo, Meses)
-=======
-grupo <- imputed_data_2016 %>% group_by(Indicativo, Meses)
->>>>>>> 59c9a9c186cd371f99a574d856ac20b3d2901976
 
-ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
-  geom_bar(stat = "identity") +
-  labs(x = "Mes", y = "Promedio de Valor", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-  theme_minimal()
+grupo <- imputed_data %>% group_by(Indicativo, Meses)
+
+grupo$Meses <- factor(grupo$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+# ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
+#   geom_bar(stat = "identity") +
+#   labs(x = "Mes", y = "Promedio de Valor", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+#   theme_minimal()
+
+#Para el calculo de outliers se hizo uso de la regla MADM
+#outliers <- which(abs(grupo$W_MED- median(grupo$W_MED)) > 3*mad(grupo$W_MED))
+
+for (i in names(grupo)) {
+  if (is.numeric(grupo[[i]])) {
+    outliers <- boxplot.stats(grupo[[i]])$out
+  }
+  
+print(outliers)
+}
+
+
+
+
+grupo %>%
+  ggplot(aes(x = Meses, y = HR)) + 
+   geom_boxplot() 
+  
+
+grupo %>%
+  ggplot(aes(x = Meses, y = INSO)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = P_MES)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MAX)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MES)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MIN)) + 
+   geom_boxplot() 
+grupo %>%
+  ggplot(aes(x = Meses, y = W_MED)) + 
+   geom_boxplot() 
 ```
 
 
