@@ -1,0 +1,247 @@
+---
+title: "ProyectoAED"
+author: "Alex Riera Merino"
+date: "2023-11-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(tidyverse)
+library(dplyr)
+```
+
+
+```{r}
+estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+```
+
+```{r}
+#proceso para la extración de datasets de 1 único año.
+
+dataset1 <- read_delim("./data/Variables/2022/HR_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+dataset2 <- read_delim("./data/Maestro_Climatologico_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+
+ruta_carpeta<-"./data/Variables/2022"
+
+archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
+
+nuevo_dataset <- dataset1 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_HR")
+
+dataset3 <- read_delim("./data/Variables/2022/INSO_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_2 <- dataset3 %>%
+  pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_IN")
+nuevo_dataset_2 <- nuevo_dataset_2[1:nrow(nuevo_dataset),]
+
+
+dataset_final <- left_join(nuevo_dataset,nuevo_dataset_2)
+
+
+ 
+dataset4 <- read_delim("./data/Variables/2022/P_MES_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_3 <- dataset4 %>%
+  pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_PMES") 
+
+nuevo_dataset_3 <- nuevo_dataset_3[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_3)
+
+dataset5 <- read_delim("./data/Variables/2022/TM_MAX_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_4 <- dataset5 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMAX")
+
+nuevo_dataset_4 <- nuevo_dataset_4[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_4)
+
+dataset6 <- read_delim("./data/Variables/2022/TM_MES_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_5 <- dataset6 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMES")
+
+nuevo_dataset_5 <- nuevo_dataset_5[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_5)
+ 
+dataset7 <- read_delim("./data/Variables/2022/TM_MIN_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_6 <- dataset7 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMIN")
+
+nuevo_dataset_6 <- nuevo_dataset_6[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_6)
+ 
+dataset8 <- read_delim("./data/Variables/2022/W_MED_2022.csv", 
+     delim = ";", escape_double = FALSE, trim_ws = TRUE)
+nuevo_dataset_7 <- dataset8 %>%
+   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_WM")
+
+nuevo_dataset_7 <- nuevo_dataset_7[1:nrow(nuevo_dataset),]
+
+dataset_final <- left_join(dataset_final,nuevo_dataset_7)
+
+```
+
+
+```{r}
+carpeta_base<-"./data/Variables/"
+
+años<-2016:2022
+
+lista_dataframes <- list()
+
+for (año in años){
+  
+ruta_carpeta<-file.path(carpeta_base, as.character(año))
+archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
+
+
+df_año<-data.frame(Indicativo = character(0), Meses = character(0), Valores= numeric(0))
+
+
+for (archivo in archivos_climaticos) {
+  
+  ruta_completa_archivo<-file.path(ruta_carpeta,archivo)
+  variable <-read_delim(ruta_completa_archivo, delim = ";", escape_double = FALSE,
+                          trim_ws=TRUE, show_col_types=FALSE)
+  prefijo <- substr(archivo, 1, nchar(archivo) - 9)
+
+  df_variable <- variable %>%
+      pivot_longer(col = -c(Indicativo), names_to = "Meses", 
+                   values_to = prefijo) 
+  
+    if (archivo == archivos_climaticos[1]) {
+        
+      df_año <- df_variable
+      
+     } else {
+       
+      df_año <- left_join(df_año,df_variable, by=join_by("Indicativo","Meses"))
+     }
+  
+}
+  lista_dataframes[[as.character(año)]] <- df_año
+  assign(paste0("df_", año), df_año, envir = .GlobalEnv)
+  carpeta<-"./data/"
+  nombre_archivo <- file.path(carpeta, paste0("dataset_",año,".csv"))
+  write.csv(df_año, nombre_archivo, row.names = FALSE)
+}
+
+rm(df_variable,variable,df_año)
+```
+
+HR -> humedad relativa mensual/anual (%)
+INSO -> Media mensual/anual de la insolación diaria (horas)
+P_MES -> Precipitación total mensual/anual (mm)
+TM_MAX -> Temperatura media mensual/anual de las máximas (°C)
+TM_MES -> Temperatura media mensual/anual (°C)
+TM_MIN -> Temperatura media mensual/anual de las mínimas (°C)
+
+```{r}
+library(mice)
+
+df_2016
+faltan_2016<- colMeans(is.na(df_2016)) * 100
+faltan_2016
+
+data_filtered <- df_2016 %>% filter(Meses != "anual") #filtro el dataset quitando los años
+
+imputed_data_filtered <- mice(data_filtered, m = 50, method = "pmm") #hago la imputación de datos con mice mediante el metodo de predictive mean matching
+
+imputed_data <- complete(imputed_data_filtered, action = 1) #introduzco los datos
+
+filtered_rows <- df_2016 %>% filter(Meses == "anual") #tomo el dataset que solo contiene los "anual"
+
+#ahora obtengo los valores anuales por indicativo para cada variable
+columnas <- c("HR", "INSO","TM_MAX","TM_MES","TM_MIN","W_MED")
+columnas2 <- c("P_MES")
+columnas_F <- c("HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")
+
+#dataframe con los promedios anuales por indicativo
+result <- imputed_data %>%
+  group_by(Indicativo) %>%
+  summarise(across(all_of(columnas), mean))
+
+#dataframe con la suma anual de precipitaciones
+result2 <-imputed_data %>%
+  group_by(Indicativo)%>%
+  summarise(across(all_of("P_MES"), sum))
+
+#los uno y los ordeno conforme al original
+
+df_2016_anual <- mutate(result, result2)
+df_2016_anual <-df_2016_anual[,c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")]
+
+
+
+```
+
+```{r}
+
+library(ggplot2)
+
+grupo <- imputed_data %>% group_by(Indicativo, Meses)
+
+grupo$Meses <- factor(grupo$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+# ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
+#   geom_bar(stat = "identity") +
+#   labs(x = "Mes", y = "Promedio de Valor", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+#   theme_minimal()
+
+#Para el calculo de outliers se hizo uso de la regla MADM
+#outliers <- which(abs(grupo$W_MED- median(grupo$W_MED)) > 3*mad(grupo$W_MED))
+
+for (i in names(grupo)) {
+  if (is.numeric(grupo[[i]])) {
+    outliers <- boxplot.stats(grupo[[i]])$out
+  }
+  
+print(outliers)
+}
+
+
+
+
+grupo %>%
+  ggplot(aes(x = Meses, y = HR)) + 
+   geom_boxplot() 
+  
+
+grupo %>%
+  ggplot(aes(x = Meses, y = INSO)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = P_MES)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MAX)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MES)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MIN)) + 
+   geom_boxplot() 
+grupo %>%
+  ggplot(aes(x = Meses, y = W_MED)) + 
+   geom_boxplot() 
+```
+
+
