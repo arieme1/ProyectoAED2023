@@ -16,16 +16,6 @@ library(dplyr)
 ```
 
 
-
-
-```{r}
-library(readr)
-library(tidyverse)
-library(dplyr)
-```
-
-
-
 ```{r}
 estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
@@ -201,7 +191,11 @@ df_2016_anual <-df_2016_anual[,c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_
 ```{r}
 
 library(ggplot2)
+<<<<<<< HEAD
 grupo <- imputed_data %>% group_by(Indicativo, Meses)
+=======
+grupo <- imputed_data_2016 %>% group_by(Indicativo, Meses)
+>>>>>>> 59c9a9c186cd371f99a574d856ac20b3d2901976
 
 ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
   geom_bar(stat = "identity") +
