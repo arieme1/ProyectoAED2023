@@ -40,6 +40,7 @@ for (archivo in archivos_climaticos) {
   #colnames(variable)[-1] <- paste("p_", colnames(variable)[-1], sep = "")
   datos_variable<-as.data.frame(variable) 
   datos_2022<-merge(datos_2022,datos_variable, by="Indicativo", sort=FALSE,all.x = TRUE, all.y = TRUE)
+
 }
 ```
 
