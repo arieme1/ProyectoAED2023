@@ -1,0 +1,322 @@
+---
+title: "Informe"
+author: "Mar Riveiro Cabado"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introducción
+
+# Instalación y carga de librerías necesarias
+
+```{r}
+rm(list=ls())
+library(pacman)
+packages = c("knitr", "ggplot2","tidyr","dplyr","readr","GGally", "mice", "robustbase")
+pacman::p_load(char=packages)
+```
+
+# Conjunto de datos
+
+
+```{r}
+estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+
+agregar_separador <- function(numero, posicion) {
+  # Convertir el número a cadena de caracteres
+  numero_str <- as.character(numero)
+  
+  # Insertar el separador en la posición deseada
+  numero_formateado <- paste0(
+    substr(numero_str, 1, posicion),
+    ".",
+    substr(numero_str,posicion + 1, nchar(numero_str))
+  )
+  
+  # Devolver el resultado como número
+  return(as.numeric(numero_formateado))
+}
+
+estaciones$LATITUD <- agregar_separador(estaciones$LATITUD, 2)
+estaciones$LONGITUD <- agregar_separador(estaciones$LONGITUD, 1)
+
+estaciones$LONGITUD<-estaciones$LONGITUD*(-1)
+
+
+estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")] <- -estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")]
+```
+
+
+```{r}
+carpeta_base<-"./data/Variables/"
+
+años<-2016:2022
+lista_dataframes <- list()
+
+for (año in años){
+  
+  ruta_carpeta<-file.path(carpeta_base, as.character(año))
+  archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
+  
+  df_año<-data.frame(Indicativo = character(0), 
+                     Meses = character(0), Valores= numeric(0))
+
+  for (archivo in archivos_climaticos) {
+    
+    ruta_completa_archivo<-file.path(ruta_carpeta,archivo)
+    variable <-read_delim(ruta_completa_archivo, delim = ";",
+                          escape_double = FALSE, trim_ws=TRUE,
+                          show_col_types=FALSE)
+    prefijo <- substr(archivo, 1, nchar(archivo) - 9)
+  
+    df_variable <- variable %>%
+        pivot_longer(col = -c(Indicativo), names_to = "Meses", 
+                     values_to = prefijo) 
+    
+      if (archivo == archivos_climaticos[1]) {
+          
+        df_año <- df_variable
+        
+       } else {
+         
+        df_año <- left_join(df_año,df_variable,
+                            by=join_by("Indicativo","Meses"))
+       }
+    
+  }
+    lista_dataframes[[as.character(año)]] <- df_año
+    assign(paste0("df_", año), df_año, envir = .GlobalEnv)
+    carpeta<-"./data/"
+    nombre_archivo <- file.path(carpeta, paste0("dataset_",año,".csv"))
+    write.csv(df_año, nombre_archivo, row.names = FALSE)
+}
+
+```
+
+
+
+
+Variables:
+
+  * HR -> humedad relativa mensual/anual (%)
+  * INSO -> Media mensual/anual de la insolación diaria (horas)
+  * P_MES -> Precipitación total mensual/anual (mm)
+  * TM_MAX -> Temperatura media mensual/anual de las máximas (°C)
+  * TM_MES -> Temperatura media mensual/anual (°C)
+  * TM_MIN -> Temperatura media mensual/anual de las mínimas (°C)
+
+# Exploración Inicial de los datos
+
+## Comprobación de datos faltantes e imputación
+
+```{r}
+faltan_2016<- colMeans(is.na(df_2016)) * 100
+
+data_filtered <- df_2016 %>% filter(Meses != "anual") #filtro el dataset quitando los años
+
+imputed_data_filtered <- mice(data_filtered, m = 5) #hago la imputación de datos con mice
+
+imputed_data_2016 <- complete(imputed_data_filtered, action = 1) #introduzco los datos
+
+filtered_rows <- df_2016 %>% filter(Meses == "anual") #tomo el dataset que solo contiene los "anual"
+
+#ahora obtengo los valores anuales por indicativo para cada variable
+columnas <- c("HR", "INSO","TM_MAX","TM_MES","TM_MIN","W_MED")
+columnas2 <- c("P_MES")
+columnas_F <- c("HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")
+
+#dataframe con los promedios anuales por indicativo
+result <- imputed_data_2016 %>%
+  group_by(Indicativo) %>%
+  summarise(across(all_of(columnas), mean))
+
+#dataframe con la suma anual de precipitaciones
+result2 <-imputed_data_2016 %>%
+  group_by(Indicativo)%>%
+  summarise(across(all_of("P_MES"), sum))
+
+#los uno y los ordeno conforme al original
+df_2016_anual <- mutate(result, result2)
+df_2016_anual <-df_2016_anual[,c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")]
+
+d_prueba<- imputed_data_2016 %>% group_by(Meses)
+
+```
+
+
+
+```{r}
+#ANUAL
+estaciones <- estaciones %>%
+  rename(Indicativo = INDICATIVO)
+Indicativos_maestro <- unique(unlist(estaciones[,"Indicativo"]))
+años<-2016:2022
+columnas <- c("HR", "INSO","TM_MAX","TM_MES","TM_MIN","W_MED")
+columnas2 <- c("P_MES")
+dataframes_anuales <- list()
+dataframes_mensuales <- list()
+i <- 2016
+
+for (df in lista_dataframes){
+  Indicativos_df <- unique(unlist(df[,"Indicativo"]))
+  I_comunes <- intersect(Indicativos_df, Indicativos_maestro)
+  
+  Localizame <- estaciones[,c("Indicativo","PROVINCIA", "LONGITUD", "LATITUD")]
+  Localizame <- Localizame%>%subset(Indicativo %in% I_comunes)
+
+  data_filtered <- df %>% filter(Meses != "anual")%>%subset(Indicativo %in% I_comunes) 
+
+  imputed_data_filtered <- mice(data_filtered, m = 5) 
+  imputed_data <- complete(imputed_data_filtered, action = 1) 
+#hago la imputación de datos con mice e introduzco los datos
+
+  filtered_rows <- df %>% filter(Meses == "anual")%>%subset(Indicativo %in% I_comunes) 
+
+  result <- imputed_data %>%group_by(Indicativo) %>%summarise(across(all_of(columnas), mean))
+
+  result2 <-imputed_data %>%group_by(Indicativo)%>%summarise(across(all_of("P_MES"), sum))
+
+  df_anual <- mutate(result, result2)
+  df_anual<-df_anual[,c("Indicativo","HR","INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")]
+  df_anual <- merge(df_anual, Localizame, by = "Indicativo")
+  nombre_df_a <- paste0("df_anual", i)
+  dataframes_anuales[[nombre_df_a]] <- df_anual
+  
+  
+  df_mensual <- merge(imputed_data, Localizame, by = "Indicativo")
+  nombre_df_m <-paste0("df_mensual", i)
+  dataframes_mensuales[[nombre_df_m]] <- df_mensual
+  i<-i+1
+}
+```
+
+
+## Visualización de los datos
+
+```{r}
+grupo <- imputed_data_2016 %>% group_by(Indicativo, Meses)
+
+ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Mes", y = "Promedio de Valor", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+  theme_minimal()
+```
+
+
+## Comprobación de outliers
+
+```{r}
+grupo <- imputed_data %>% group_by(Indicativo, Meses)
+
+grupo$Meses <- factor(grupo$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+# ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
+#   geom_bar(stat = "identity") +
+#   labs(x = "Mes", y = "Promedio de Valor", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+#   theme_minimal()
+
+#Para el calculo de outliers se hizo uso de la regla MADM
+outliers <- which(abs(grupo$W_MED- median(grupo$W_MED)) > 3*mad(grupo$W_MED))
+
+for (i in names(grupo)) {
+  if (is.numeric(grupo[[i]])) {
+    outliers <- boxplot.stats(grupo[[i]])$out
+  }
+  
+print(outliers)
+}
+
+grupo %>%
+  ggplot(aes(x = Meses, y = HR)) + 
+   geom_boxplot() 
+  
+
+grupo %>%
+  ggplot(aes(x = Meses, y = INSO)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = P_MES)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MAX)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MES)) + 
+   geom_boxplot() 
+
+grupo %>%
+  ggplot(aes(x = Meses, y = TM_MIN)) + 
+   geom_boxplot() 
+grupo %>%
+  ggplot(aes(x = Meses, y = W_MED)) + 
+   geom_boxplot() 
+```
+
+## Estadísticos
+
+```{r}
+estadisticos <- d_prueba %>%
+  summarise(across(where(is.numeric), 
+                   list(mean = ~mean(., na.rm = TRUE), 
+                        sd = ~sd(., na.rm = TRUE), 
+                        median = ~median(., na.rm = TRUE),
+                        iqr = ~IQR(., na.rm = TRUE))))
+esta
+```
+
+*Mediana Absoluta de la Desviación*
+
+```{r}
+columnas_variables<- d_prueba[,!(names(d_prueba) %in% c("Indicativo", "Meses"))]
+mad_<- sapply(columnas_variables, mad)
+print(mad_)
+```
+
+# Análisis Univariado
+
+# Análisis Bivariado
+
+* Coeficiente de Correlación de Pearson: Mide la fuerza y dirección de una relación lineal.
+
+```{r}
+cov(columnas_variables, use = "everything",method = "pearson")
+cp<-cor(columnas_variables, use = "everything",method ="pearson")
+```
+
+
+* Coeficiente de Correlación de Spearman: Evalúa la relación monótona entre dos variables.
+
+```{r}
+cov(columnas_variables, use = "everything",method = "spearman")
+cor(columnas_variables, use = "everything",method ="spearman")
+```
+
+```{r}
+library(corrplot)
+corrplot(cp, method = "circle", title = "Matriz de Correlaciones")
+```
+
+```{r}
+library(GGally)
+ggpairs(columnas_variables)
+```
+
+
+# Visualización de los datos
+
+# Conclusiones
+
+
+
+
+
+
+
