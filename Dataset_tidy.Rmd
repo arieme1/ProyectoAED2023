@@ -13,84 +13,37 @@ knitr::opts_chunk$set(echo = TRUE)
 library(readr)
 library(tidyverse)
 library(dplyr)
+library(mice)
 ```
 
 
 ```{r}
 estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
-```
 
-```{r}
-#proceso para la extración de datasets de 1 único año.
+agregar_separador <- function(numero, posicion) {
+  # Convertir el número a cadena de caracteres
+  numero_str <- as.character(numero)
+  
+  # Insertar el separador en la posición deseada
+  numero_formateado <- paste0(
+    substr(numero_str, 1, posicion),
+    ".",
+    substr(numero_str,posicion + 1, nchar(numero_str))
+  )
+  
+  # Devolver el resultado como número
+  return(as.numeric(numero_formateado))
+}
 
-dataset1 <- read_delim("./data/Variables/2022/HR_2022.csv", 
-    delim = ";", escape_double = FALSE, trim_ws = TRUE)
-dataset2 <- read_delim("./data/Maestro_Climatologico_2022.csv", 
-    delim = ";", escape_double = FALSE, trim_ws = TRUE)
+estaciones$LATITUD <- agregar_separador(estaciones$LATITUD, 2)
+estaciones$LONGITUD <- agregar_separador(estaciones$LONGITUD, 1)
 
-ruta_carpeta<-"./data/Variables/2022"
-
-archivos_climaticos <- list.files(ruta_carpeta,pattern = ".*.csv")
-
-nuevo_dataset <- dataset1 %>%
-   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_HR")
-
-dataset3 <- read_delim("./data/Variables/2022/INSO_2022.csv", 
-     delim = ";", escape_double = FALSE, trim_ws = TRUE)
-nuevo_dataset_2 <- dataset3 %>%
-  pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_IN")
-nuevo_dataset_2 <- nuevo_dataset_2[1:nrow(nuevo_dataset),]
+estaciones$LONGITUD<-estaciones$LONGITUD*(-1)
 
 
-dataset_final <- left_join(nuevo_dataset,nuevo_dataset_2)
+estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")] <- -estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")]
 
-
- 
-dataset4 <- read_delim("./data/Variables/2022/P_MES_2022.csv", 
-     delim = ";", escape_double = FALSE, trim_ws = TRUE)
-nuevo_dataset_3 <- dataset4 %>%
-  pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_PMES") 
-
-nuevo_dataset_3 <- nuevo_dataset_3[1:nrow(nuevo_dataset),]
-
-dataset_final <- left_join(dataset_final,nuevo_dataset_3)
-
-dataset5 <- read_delim("./data/Variables/2022/TM_MAX_2022.csv", 
-     delim = ";", escape_double = FALSE, trim_ws = TRUE)
-nuevo_dataset_4 <- dataset5 %>%
-   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMAX")
-
-nuevo_dataset_4 <- nuevo_dataset_4[1:nrow(nuevo_dataset),]
-
-dataset_final <- left_join(dataset_final,nuevo_dataset_4)
-
-dataset6 <- read_delim("./data/Variables/2022/TM_MES_2022.csv", 
-     delim = ";", escape_double = FALSE, trim_ws = TRUE)
-nuevo_dataset_5 <- dataset6 %>%
-   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMES")
-
-nuevo_dataset_5 <- nuevo_dataset_5[1:nrow(nuevo_dataset),]
-
-dataset_final <- left_join(dataset_final,nuevo_dataset_5)
- 
-dataset7 <- read_delim("./data/Variables/2022/TM_MIN_2022.csv", 
-     delim = ";", escape_double = FALSE, trim_ws = TRUE)
-nuevo_dataset_6 <- dataset7 %>%
-   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_TMIN")
-
-nuevo_dataset_6 <- nuevo_dataset_6[1:nrow(nuevo_dataset),]
-
-dataset_final <- left_join(dataset_final,nuevo_dataset_6)
- 
-dataset8 <- read_delim("./data/Variables/2022/W_MED_2022.csv", 
-     delim = ";", escape_double = FALSE, trim_ws = TRUE)
-nuevo_dataset_7 <- dataset8 %>%
-   pivot_longer(col = -c(Indicativo), names_to = "Meses", values_to = "Valores_WM")
-
-nuevo_dataset_7 <- nuevo_dataset_7[1:nrow(nuevo_dataset),]
-
-dataset_final <- left_join(dataset_final,nuevo_dataset_7)
 
 ```
 
@@ -150,55 +103,6 @@ rm(df_variable,variable,df_año)
   * TM_MIN -> Temperatura media mensual/anual de las mínimas (°C)
 
 ```{r}
-#2016
-library(mice)
-Indicativos_2016 <- unique(unlist(df_2016[,"Indicativo"]))
-Indicativos_maestro <- unique(unlist(estaciones[,"Indicativo"]))
-I_comunes <- intersect(Indicativos_2016, Indicativos_maestro)
-#me quedo con los indicativos comunes
-
-
-data_filtered <- df_2016 %>% filter(Meses != "anual")%>%subset(Indicativo %in% I_comunes) 
-#filtro el dataset quitando los años y quedándome con los Indicativos comunes al Maestro
-
-Localizame <- estaciones[,c("Indicativo","PROVINCIA", "LONGITUD", "LATITUD")]
-Localizame <- Localizame%>%subset(Indicativo %in% I_comunes)
-#dataframe con la localización de los indicativos comunes
-
-
-imputed_data_filtered <- mice(data_filtered, m = 5) 
-imputed_data <- complete(imputed_data_filtered, action = 1) 
-#hago la imputación de datos con mice e introduzco los datos
-
-filtered_rows <- df_2016 %>% filter(Meses == "anual")%>%subset(Indicativo %in% I_comunes) 
-#tomo el dataset que solo contiene los "anual"
-
-#ahora obtengo los valores anuales por indicativo para cada variable
-columnas <- c("HR", "INSO","TM_MAX","TM_MES","TM_MIN","W_MED")
-columnas2 <- c("P_MES")
-columnas_F <- c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")
-              c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")
-#dataframe con los promedios anuales por indicativo
-result <- imputed_data %>%
-  group_by(Indicativo) %>%
-  summarise(across(all_of(columnas), mean))
-
-#dataframe con la suma anual de precipitaciones
-result2 <-imputed_data %>%
-  group_by(Indicativo)%>%
-  summarise(across(all_of("P_MES"), sum))
-
-#creo el dataframe anual
-df_anual2016 <- mutate(result, result2)
-df_anual2016<-df_2016_anual[,c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_MES","TM_MIN","W_MED")]
-df_2016_anual <- merge(df_2016_anual, Localizame, by = "Indicativo")
-
-#creo el dataframe mensual
-df_mensual2016 <- merge(imputed_data, Localizame, by = "Indicativo")
-```
-
-
-```{r}
 #ANUAL
 
 Indicativos_maestro <- unique(unlist(estaciones[,"Indicativo"]))
@@ -233,49 +137,19 @@ for (df in lista_dataframes){
   df_anual <- merge(df_anual, Localizame, by = "Indicativo")
   nombre_df_a <- paste0("df_anual", i)
   dataframes_anuales[[nombre_df_a]] <- df_anual
-  
+  carpeta<-"./data/"
+  nombre_archivo <- file.path(carpeta, paste0("df_anual", i,".csv"))
+  write.csv(df_anual, nombre_archivo, row.names = FALSE)
   
   df_mensual <- merge(imputed_data, Localizame, by = "Indicativo")
   nombre_df_m <-paste0("df_mensual", i)
   dataframes_mensuales[[nombre_df_m]] <- df_mensual
+
+  carpeta<-"./data/"
+  nombre_archivo <- file.path(carpeta, paste0("df_mensual", i,".csv"))
+  write.csv(df_mensual, nombre_archivo, row.names = FALSE)
   i<-i+1
 }
-  
 
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-
-library(ggplot2)
-<<<<<<< HEAD
-grupo <- imputed_data %>% group_by(Indicativo, Meses)
-=======
-grupo <- imputed_data_2016 %>% group_by(Indicativo, Meses)
->>>>>>> 59c9a9c186cd371f99a574d856ac20b3d2901976
-
-ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
-  geom_bar(stat = "identity") +
-  labs(x = "Mes", y = "Promedio de Valor", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-  theme_minimal()
 ```
 
