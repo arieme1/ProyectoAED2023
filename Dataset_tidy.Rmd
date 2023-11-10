@@ -204,12 +204,20 @@ grupo$Meses <- factor(grupo$Meses, levels = c("enero", "febrero", "marzo", "abri
 #Para el calculo de outliers se hizo uso de la regla MADM
 #outliers <- which(abs(grupo$W_MED- median(grupo$W_MED)) > 3*mad(grupo$W_MED))
 
+lista_outliers <- list()
+
 for (i in names(grupo)) {
-  if (is.numeric(grupo[[i]])) {
-    outliers <- boxplot.stats(grupo[[i]])$out
-  }
+  outliers <- 0
   
-print(outliers)
+  if (is.numeric(grupo[[i]])) {
+    iqr <- IQR(grupo[[i]])
+    inferior <- quantile(grupo[[i]])[2] - 1.5*iqr
+    superior <- quantile(grupo[[i]])[4] + 1.5*iqr
+    outliers <- grupo[grupo[[i]] < inferior | grupo[[i]] > superior, ]
+    lista_outliers[[i]] <- outliers 
+  }
+ 
+cat("Variable:", i, "\t Outliers:", nrow(outliers), "\n")
 }
 
 
