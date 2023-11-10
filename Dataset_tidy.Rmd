@@ -206,50 +206,82 @@ grupo$Meses <- factor(grupo$Meses, levels = c("enero", "febrero", "marzo", "abri
 
 lista_outliers <- list()
 
-for (i in names(grupo)) {
-  outliers <- 0
-  
-  if (is.numeric(grupo[[i]])) {
-    iqr <- IQR(grupo[[i]])
-    inferior <- quantile(grupo[[i]])[2] - 1.5*iqr
-    superior <- quantile(grupo[[i]])[4] + 1.5*iqr
-    outliers <- grupo[grupo[[i]] < inferior | grupo[[i]] > superior, ]
-    lista_outliers[[i]] <- outliers 
+list2env(dataframes_anuales, envir = .GlobalEnv)
+
+lista_outliers <- list()
+
+for (df_names in names(dataframes_mensuales)) {
+  df <- dataframes_mensuales[[df_names]]
+  outliers_df <- list()
+  for (i in names(df)) {
+    outliers <- NULL
+  if (is.numeric(df[[i]])) {
+    iqr <- IQR(df[[i]])
+    inferior <- quantile(df[[i]])[2]
+    superior <- quantile(df[[i]])[4]
+    outliers <- df[df[[i]] < inferior | df[[i]] > superior, ]
+    outliers_df[[i]] <- outliers
   }
- 
-cat("Variable:", i, "\t Outliers:", nrow(outliers), "\n")
-}
-
-
-
-
-grupo %>%
-  ggplot(aes(x = Meses, y = HR)) + 
-   geom_boxplot() 
   
+  cat("Variable:", i, "\t Outliers:", nrow(outliers), "\n")
+  }
+  
+  lista_outliers[[df_names]] <- outliers_df
+}
+#variables que queremos representar
+variable_x <- "PROVINCIA" 
+variable_y <- "P_MES" 
+variable_z <- "PROVINCIA"
 
-grupo %>%
-  ggplot(aes(x = Meses, y = INSO)) + 
-   geom_boxplot() 
+grafico_prueba_outliers <- dataframes_mensuales[[1]] %>%
+  ggplot(aes(x = !!as.symbol(variable_x) , y = !!as.symbol(variable_y))) +
+  geom_boxplot()
 
-grupo %>%
-  ggplot(aes(x = Meses, y = P_MES)) + 
-   geom_boxplot() 
+grafico_prueba_outliers
 
-grupo %>%
-  ggplot(aes(x = Meses, y = TM_MAX)) + 
-   geom_boxplot() 
 
-grupo %>%
-  ggplot(aes(x = Meses, y = TM_MES)) + 
-   geom_boxplot() 
+grafico_animado <- dataframes_anuales[[1]] %>%
+  ggplot(aes(x = !!as.symbol(variable_y))) + 
+  geom_histogram() +
+  labs(title = "Grafica animada Precipitaciones", xlab("Meses"), ylab("Precipitaciones"))
+grafico_animado
 
-grupo %>%
-  ggplot(aes(x = Meses, y = TM_MIN)) + 
-   geom_boxplot() 
-grupo %>%
-  ggplot(aes(x = Meses, y = W_MED)) + 
-   geom_boxplot() 
+animacion_2 <- grafico_animado + transition_states(!!as.symbol(variable_y), transition_length = 1, state_length = 0.5)
+anim_save("animacion2.gif", animation = animacion_2, renderer = gifski_renderer())
+
+
+browseURL("animacion2.gif")
+
+
+
+
+# grupo %>%
+#   ggplot(aes(x = Meses, y = HR)) + 
+#    geom_boxplot() 
+#   
+# 
+# grupo %>%
+#   ggplot(aes(x = Meses, y = INSO)) + 
+#    geom_boxplot() 
+# 
+# grupo %>%
+#   ggplot(aes(x = Meses, y = P_MES)) + 
+#    geom_boxplot() 
+# 
+# grupo %>%
+#   ggplot(aes(x = Meses, y = TM_MAX)) + 
+#    geom_boxplot() 
+# 
+# grupo %>%
+#   ggplot(aes(x = Meses, y = TM_MES)) + 
+#    geom_boxplot() 
+# 
+# grupo %>%
+#   ggplot(aes(x = Meses, y = TM_MIN)) + 
+#    geom_boxplot() 
+# grupo %>%
+#   ggplot(aes(x = Meses, y = W_MED)) + 
+#    geom_boxplot() 
 ```
 
 
