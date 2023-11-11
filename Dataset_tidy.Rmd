@@ -191,10 +191,27 @@ df_2016_anual <-df_2016_anual[,c("Indicativo","HR", "INSO","P_MES","TM_MAX","TM_
 ```{r}
 
 library(ggplot2)
+library(gganimate)
+factorizar_meses <- function(df) {
+  df$Meses <- factor(df$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"))
+  return(df)
+}
 
-grupo <- imputed_data %>% group_by(Indicativo, Meses)
+nombres_dataframes <- c("df_mensual2016", "df_mensual2017", "df_mensual2018", "df_mensual2019", "df_mensual2020", "df_mensual2021", "df_mensual2022")
 
-grupo$Meses <- factor(grupo$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+# Bucle for para factorizar la columna Meses en cada dataframe
+for (nombre_df in nombres_dataframes) {
+  # Obtener el dataframe por nombre
+  df <- get(nombre_df)
+  
+  # Factorizar la columna Meses utilizando la función
+  df_factorizado <- factorizar_meses(df)
+  
+  # Asignar el dataframe factorizado de vuelta al entorno global
+  assign(nombre_df, df_factorizado)
+}
+
+
 
 # ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
 #   geom_bar(stat = "identity") +
@@ -204,9 +221,10 @@ grupo$Meses <- factor(grupo$Meses, levels = c("enero", "febrero", "marzo", "abri
 #Para el calculo de outliers se hizo uso de la regla MADM
 #outliers <- which(abs(grupo$W_MED- median(grupo$W_MED)) > 3*mad(grupo$W_MED))
 
-lista_outliers <- list()
+
 
 list2env(dataframes_anuales, envir = .GlobalEnv)
+list2env(dataframes_mensuales, envir = .GlobalEnv)
 
 lista_outliers <- list()
 
@@ -229,59 +247,221 @@ for (df_names in names(dataframes_mensuales)) {
   lista_outliers[[df_names]] <- outliers_df
 }
 #variables que queremos representar
-variable_x <- "PROVINCIA" 
-variable_y <- "P_MES" 
-variable_z <- "PROVINCIA"
-
-grafico_prueba_outliers <- dataframes_mensuales[[1]] %>%
-  ggplot(aes(x = !!as.symbol(variable_x) , y = !!as.symbol(variable_y))) +
-  geom_boxplot()
-
-grafico_prueba_outliers
 
 
-grafico_animado <- dataframes_anuales[[1]] %>%
-  ggplot(aes(x = !!as.symbol(variable_y))) + 
-  geom_histogram() +
-  labs(title = "Grafica animada Precipitaciones", xlab("Meses"), ylab("Precipitaciones"))
-grafico_animado
-
-animacion_2 <- grafico_animado + transition_states(!!as.symbol(variable_y), transition_length = 1, state_length = 0.5)
-anim_save("animacion2.gif", animation = animacion_2, renderer = gifski_renderer())
-
-
-browseURL("animacion2.gif")
+grafico_prueba_outliers <- df_mensual2017 %>%
+  ggplot(aes(x = PROVINCIA , y = P_MES)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 
 
-# grupo %>%
-#   ggplot(aes(x = Meses, y = HR)) + 
-#    geom_boxplot() 
-#   
-# 
-# grupo %>%
-#   ggplot(aes(x = Meses, y = INSO)) + 
-#    geom_boxplot() 
-# 
-# grupo %>%
+# grafico_animado <- df_mensual2017 %>%
 #   ggplot(aes(x = Meses, y = P_MES)) + 
-#    geom_boxplot() 
+#   geom_boxplot() +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+#   labs(title = "Grafica animada Precipitaciones", xlab("Meses"), ylab("Precipitaciones"))
+# grafico_animado
 # 
-# grupo %>%
-#   ggplot(aes(x = Meses, y = TM_MAX)) + 
-#    geom_boxplot() 
-# 
-# grupo %>%
-#   ggplot(aes(x = Meses, y = TM_MES)) + 
-#    geom_boxplot() 
-# 
-# grupo %>%
-#   ggplot(aes(x = Meses, y = TM_MIN)) + 
-#    geom_boxplot() 
-# grupo %>%
-#   ggplot(aes(x = Meses, y = W_MED)) + 
-#    geom_boxplot() 
+# animacion_2 <- grafico_animado + transition_states(P_MES, transition_length = 1, state_length = 0.5)
+# anim_save("animacion2.gif", animation = animacion_2, renderer = gifski_renderer())
+
+
+
+
+# Supongamos que tienes un dataframe llamado 'datos' con columnas 'Provincia', 'Año' y 'Precipitaciones'
+
+#Crea una gráfica ggplot básica
+
+p <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = P_MES, group = Meses)) +
+  geom_line() +
+  labs(title = 'Precipitaciones por Provincia', x = 'Provincia', y = 'Precipitaciones') +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#transition_reveal(P_MES)
+# Añade la animación por año
+p_animada <- p + transition_states(Meses, transition_length = 2, state_length = 1)
+anim_save("p_animada.gif", animation = p_animada, renderer = gifski_renderer())
+
+browseURL("p_animada.gif")
+
+tmes <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = TM_MES, group = Meses)) +
+  geom_line() +
+  labs(title = 'Temperatura Media por Provincia', x = 'Provincia', y = 'Temperatura Media') +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#transition_reveal(P_MES)
+# Añade la animación por año
+TMes_animada <- tmes + transition_states(Meses, transition_length = 2, state_length = 1)
+anim_save("TMes_animada.gif", animation = TMes_animada, renderer = gifski_renderer())
+
+browseURL("TMes_animada.gif")
+
+
+tmmin <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = TM_MIN, group = Meses)) +
+  geom_line() +
+  labs(title = 'Temperatura Media Minima por Provincia', x = 'Provincia', y = 'Temperatura Media Minima') +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#transition_reveal(P_MES)
+# Añade la animación por año
+TMmin_animada <- tmmin + transition_states(Meses, transition_length = 2, state_length = 1)
+anim_save("TMmin_animada.gif", animation = TMmin_animada, renderer = gifski_renderer())
+
+browseURL("TMmin_animada.gif")
+
+tmmax <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = TM_MAX, group = Meses)) +
+  geom_line() +
+  labs(title = 'Temperatura Media Máxima por Provincia', x = 'Provincia', y = 'Temperatura Media Máxima') +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#transition_reveal(P_MES)
+# Añade la animación por año
+TMmax_animada <- tmmax + transition_states(Meses, transition_length = 2, state_length = 1)
+anim_save("TMmax_animada.gif", animation = TMmax_animada, renderer = gifski_renderer())
+
+browseURL("TMmax_animada.gif")
+
+hr <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = HR, group = Meses)) +
+  geom_line() +
+  labs(title = 'Humedad Relativa por Provincia', x = 'Provincia', y = 'Humedad Relativa') +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#transition_reveal(P_MES)
+# Añade la animación por año
+HR_animada <- hr + transition_states(Meses, transition_length = 2, state_length = 1)
+anim_save("HR_animada.gif", animation = HR_animada, renderer = gifski_renderer())
+
+browseURL("HR_animada.gif")
+
+
+inso <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = INSO, group = Meses)) +
+  geom_line() +
+  labs(title = 'Insolación por Provincia', x = 'Provincia', y = 'Insolación') +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#transition_reveal(P_MES)
+# Añade la animación por año
+INSO_animada <- inso + transition_states(Meses, transition_length = 2, state_length = 1)
+anim_save("INSO_animada.gif", animation = INSO_animada, renderer = gifski_renderer())
+
+browseURL("INSO_animada.gif")
+
+
+wm <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = W_MED, group = Meses)) +
+  geom_line() +
+  labs(title = 'Viento Medio por Provincia', x = 'Provincia', y = 'Viento Medio') +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+#transition_reveal(P_MES)
+# Añade la animación por año
+WM_animada <- wm + transition_states(Meses, transition_length = 2, state_length = 1)
+anim_save("WM_animada.gif", animation = WM_animada, renderer = gifski_renderer())
+
+browseURL("WM_animada.gif")
+
+
 ```
+
+
+```{r}
+
+
+dataset_anual_2 <- data.frame(df_anual2017$P_MES, df_anual2018$P_MES)
+dataset_anual_3 <- data.frame(dataset_anual_2, df_anual2019$P_MES)
+dataset_anual_4 <- data.frame(dataset_anual_3, df_anual2020$P_MES)
+dataset_anual_5 <- data.frame(dataset_anual_4, df_anual2021$P_MES)
+dataset_anual_precipitaciones <- data.frame(dataset_anual_5, df_anual2022$P_MES)
+names(dataset_anual_precipitaciones) <- c("2017","2018","2019","2020","2021","2022")
+
+
+
+datos_largo <- gather(dataset_anual_precipitaciones, key = "año", value = "precipitacion")
+
+
+grafica1 <- ggplot(datos_largo, aes(x = precipitacion, y = año,  color = año)) +
+  geom_line() +
+  coord_flip() +
+  scale_x_continuous(limits = c(0,550)) +
+  labs(title = "Distribución de Precipitaciones por Año",
+       x = "Precipitacion",  # Elimina la etiqueta del eje x
+       y = "Año") +
+  theme_minimal() +
+  theme(axis.text.y  = element_text(angle = 90, hjust = 1))
+
+
+grafica1
+
+grafica_animada1 <- grafica1 + transition_reveal(precipitacion)
+grafica_animada1
+anim_save("grafica_animada1", animation = grafica_animada1, renderer = gifski_renderer())
+browseURL("grafica_animada1.gif")
+
+
+
+dataset_anual_2.1 <- data.frame(df_anual2017$TM_MES, df_anual2018$TM_MES)
+dataset_anual_3.1 <- data.frame(dataset_anual_2.1, df_anual2019$TM_MES)
+dataset_anual_4.1 <- data.frame(dataset_anual_3.1, df_anual2020$TM_MES)
+dataset_anual_5.1 <- data.frame(dataset_anual_4.1, df_anual2021$TM_MES)
+dataset_anual_temperaturas <- data.frame(dataset_anual_5.1, df_anual2022$TM_MES)
+names(dataset_anual_temperaturas) <- c("2017","2018","2019","2020","2021","2022")
+
+datos_largo.1 <- gather(dataset_anual_temperaturas, key = "año", value = "temperatura")
+
+
+
+grafica2 <- ggplot(datos_largo.1, aes(x = temperatura, y = año, color = año)) +
+  geom_line() +
+  coord_flip() +
+  scale_x_continuous(limits = c(0,35)) +
+  labs(title = "Distribución de Temperatura por Año",
+       xlab = "Años",
+       ylab = "Temperatura") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(angle = 90, hjust = 1))
+
+grafica2
+
+grafica_animada2 <- grafica2 + transition_reveal(temperatura)
+grafica_animada2
+anim_save("grafica_animada2.gif", animation = grafica_animada2, renderer = gifski_renderer())
+browseURL("grafica_animada2.gif")
+
+dataset_anual_2.2 <- data.frame(df_anual2017$INSO, df_anual2018$INSO)
+dataset_anual_3.2 <- data.frame(dataset_anual_2.2, df_anual2019$INSO)
+dataset_anual_4.2 <- data.frame(dataset_anual_3.2, df_anual2020$INSO)
+dataset_anual_5.2 <- data.frame(dataset_anual_4.2, df_anual2021$INSO)
+dataset_anual_inso <- data.frame(dataset_anual_5.2, df_anual2022$INSO)
+names(dataset_anual_inso) <- c("2017","2018","2019","2020","2021","2022")
+
+datos_largo.2 <- gather(dataset_anual_inso, key = "año", value = "insolacion")
+
+grafica3 <- ggplot(datos_largo.2, aes(x = insolacion, y = año, color = año)) +
+  geom_line() +
+  coord_flip() +
+  scale_x_continuous(limits = c(0,20)) +
+  labs(title = "Distribución de Insolacion por Año",
+       xlab = "Años",
+       ylab = "Insolacion") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(angle = 90, hjust = 1))
+
+grafica3
+
+grafica_animada3 <- grafica3 + transition_reveal(insolacion)
+grafica_animada3
+anim_save("grafica_animada3.gif", animation = grafica_animada3, renderer = gifski_renderer())
+browseURL("grafica_animada3.gif")
+
+```
+
 
 
