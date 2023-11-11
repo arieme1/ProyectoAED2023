@@ -10,33 +10,121 @@ library(ggplot2)
 library(readr)
 library(leaflet)
 library(maps)
-
 ```
+
 ```{r}
 #si los dataset no están en el enviroment o no se tiene la lista "datafarmes_anuales/mensuales", la última versión de Dataset_tidy los graba en la carpeta "data"
 
 list2env(dataframes_anuales, envir = .GlobalEnv)
+list2env(dataframes_mensuales, envir = .GlobalEnv)
 ```
 
+## MAPA INTERACTIVO
+
 ```{r}
-# Crea un mapa de España
-
-popup = paste0(
-  df_anual2022$MUNICIPIO,"<hr>",
-  "T. Med (ºC):", round(df_anual2022$TM_MES,1),"<br>",
-  "T. Max (ºC):", round(df_anual2022$TM_MAX,1),"<br>",
-  "Precipitaciones (mm):", round(df_anual2022$P_MES),"<br>",
-  "Insolación (horas):", round(df_anual2022$INSO,1))
-
 mapa_espana <- leaflet() %>%
   addTiles() %>%
-  setView(lng = -4, lat = 40, zoom = 6) %>% addCircleMarkers(lng = Localizame$LONGITUD, lat = Localizame$LATITUD, data = Localizame,radius = 5)%>% addPopups(Localizame$LONGITUD, Localizame$LATITUD, popup,
-    options = markerOptions(clickable = T, interactive = T), labelOptions(noHide = F), popupOptions(autoPan = TRUE)
-  )
+  setView(lng = -4, lat = 40, zoom = 6) %>% addCircles(lng = df_anual2016$LONGITUD, lat = df_anual2016$LATITUD, data = df_anual2016,radius = 5, popup = df_anual2016$MUNICIPIO)
 
 # Muestra el mapa
 mapa_espana
 ```
 
+
+## MAPA INTERACTIVO 2
+
+```{r}
+# Crea un mapa de España
+
+
+mapa_espana <- leaflet() %>%
+  addTiles() %>%
+  setView(lng = -4, lat = 40, zoom = 6) %>% addCircles(lng = df_anual2022$LONGITUD, lat = df_anual2022$LATITUD, data = df_anual2022,radius = 5, popup = paste0(
+  df_anual2022$MUNICIPIO,"<hr>",
+  "T. Med (ºC):", round(df_anual2022$TM_MES,1),"<br>",
+  "T. Max (ºC):", round(df_anual2022$TM_MAX,1),"<br>",
+  "Precipitaciones (mm):", round(df_anual2022$P_MES),"<br>",
+  "Insolación (horas):", round(df_anual2022$INSO,1)))
+
+# Muestra el mapa
+mapa_espana
+```
+
+
+
+## ANÁLISIS UNIVARIADO
+
+```{r}
+#lluvias 2022
+
+df_mensual2022$Meses <- factor(df_mensual2022$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+lluvias_2022 <- df_mensual2022 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))
+
+lluvias_2022 %>%
+  ggplot(aes(x = Meses, y = prom_HR)) + 
+   geom_point() + geom_line()+
+  labs(x = "Mes", y = "Promedio mensual en España 2022 (mm)", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  theme_minimal()
+
+
+
+
+```
+
+```{r}
+#COMPLETO 2016:2022
+
+lluvias_2022 <- df_mensual2022 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2022)
+lluvias_2021 <- df_mensual2021 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2021)
+lluvias_2020 <- df_mensual2020 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2020)
+lluvias_2019 <- df_mensual2019 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2019)
+lluvias_2018 <- df_mensual2018 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2018)
+lluvias_2017 <- df_mensual2017 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2017)
+
+
+lluvias <- bind_rows(lluvias_2022,lluvias_2021, lluvias_2020,lluvias_2019)
+lluvias$Meses <- factor(lluvias$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+# Crea el gráfico de dispersión
+
+precipitaciones = ggplot(lluvias, aes(x = Meses, y = prom_HR, group = Año)) +geom_point(aes(color=factor(Año), shape =factor(Año))) +geom_line(aes(color=factor(Año),)) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+precipitaciones
+
+
+tmax_2022 <- df_mensual2022 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2022)
+tmax_2021 <- df_mensual2021 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2021)
+tmax_2020 <- df_mensual2020 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2020)
+tmax_2019 <- df_mensual2019 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2019)
+tmax_2018 <- df_mensual2018 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2018)
+tmax_2017 <- df_mensual2017 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2017)
+
+tmaximas <- bind_rows(tmax_2022, tmax_2021, tmax_2020,tmax_2019)
+tmaximas$Meses <- factor(tmaximas$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+maximas = ggplot(tmaximas, aes(x = Meses, y = prom_tmax, group = Año)) +geom_point(aes(color=factor(Año), shape =factor(Año))) +geom_line(aes(color=factor(Año),)) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+maximas
+
+
+tmed_2022 <- df_mensual2022 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2022)
+tmed_2021 <- df_mensual2021 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2021)
+tmed_2020 <- df_mensual2020 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2020)
+tmed_2019 <- df_mensual2019 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2019)
+tmed_2018 <- df_mensual2018 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2018)
+tmed_2017 <- df_mensual2017 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2017)
+
+tmed <- bind_rows(tmed_2022, tmed_2021, tmed_2020,tmed_2019)
+tmed$Meses <- factor(tmed$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+medias = ggplot(tmed, aes(x = Meses, y = prom_tmed, group = Año)) +geom_point(aes(color=factor(Año), shape =factor(Año))) +geom_line(aes(color=factor(Año),)) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+par(mfrow= c(3,1))
+
+#p_animated <- precipitaciones + transition_states(Año, transition_length = 2, state_length = 1)
+
+# Guardar la animación como un archivo GIF
+#anim_save("ruta/donde/guardar/animacion.gif", animation = p_animated)
+
+```
 
 

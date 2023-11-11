@@ -49,6 +49,8 @@ estaciones$LONGITUD<-estaciones$LONGITUD*(-1)
 
 
 estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")] <- -estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")]
+
+estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")] <- 10*estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")]
 ```
 
 
@@ -152,8 +154,8 @@ d_prueba<- imputed_data_2016 %>% group_by(Meses)
 
 ```{r}
 #ANUAL
-estaciones <- estaciones %>%
-  rename(Indicativo = INDICATIVO)
+#estaciones <- estaciones %>%
+  #rename(INDICATIVO = Indicativo)
 Indicativos_maestro <- unique(unlist(estaciones[,"Indicativo"]))
 años<-2016:2022
 columnas <- c("HR", "INSO","TM_MAX","TM_MES","TM_MIN","W_MED")
@@ -166,12 +168,12 @@ for (df in lista_dataframes){
   Indicativos_df <- unique(unlist(df[,"Indicativo"]))
   I_comunes <- intersect(Indicativos_df, Indicativos_maestro)
   
-  Localizame <- estaciones[,c("Indicativo","PROVINCIA", "LONGITUD", "LATITUD")]
+  Localizame <- estaciones[,c("Indicativo","PROVINCIA", "LONGITUD", "LATITUD", "MUNICIPIO")]
   Localizame <- Localizame%>%subset(Indicativo %in% I_comunes)
 
   data_filtered <- df %>% filter(Meses != "anual")%>%subset(Indicativo %in% I_comunes) 
 
-  imputed_data_filtered <- mice(data_filtered, m = 5) 
+  imputed_data_filtered <- mice(data_filtered, m = 15) 
   imputed_data <- complete(imputed_data_filtered, action = 1) 
 #hago la imputación de datos con mice e introduzco los datos
 
@@ -193,6 +195,8 @@ for (df in lista_dataframes){
   dataframes_mensuales[[nombre_df_m]] <- df_mensual
   i<-i+1
 }
+
+list2env(dataframes_anuales, envir = .GlobalEnv)
 ```
 
 
@@ -269,7 +273,7 @@ estadisticos <- d_prueba %>%
                         sd = ~sd(., na.rm = TRUE), 
                         median = ~median(., na.rm = TRUE),
                         iqr = ~IQR(., na.rm = TRUE))))
-esta
+
 ```
 
 *Mediana Absoluta de la Desviación*
