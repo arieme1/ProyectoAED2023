@@ -1,0 +1,42 @@
+---
+title: "Representacion y Leaflet"
+author: "JoseMarq"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(ggplot2)
+library(readr)
+library(leaflet)
+library(maps)
+
+```
+```{r}
+#si los dataset no están en el enviroment o no se tiene la lista "datafarmes_anuales/mensuales", la última versión de Dataset_tidy los graba en la carpeta "data"
+
+list2env(dataframes_anuales, envir = .GlobalEnv)
+```
+
+```{r}
+# Crea un mapa de España
+
+popup = paste0(
+  df_anual2022$MUNICIPIO,"<hr>",
+  "T. Med (ºC):", round(df_anual2022$TM_MES,1),"<br>",
+  "T. Max (ºC):", round(df_anual2022$TM_MAX,1),"<br>",
+  "Precipitaciones (mm):", round(df_anual2022$P_MES),"<br>",
+  "Insolación (horas):", round(df_anual2022$INSO,1))
+
+mapa_espana <- leaflet() %>%
+  addTiles() %>%
+  setView(lng = -4, lat = 40, zoom = 6) %>% addCircleMarkers(lng = Localizame$LONGITUD, lat = Localizame$LATITUD, data = Localizame,radius = 5)%>% addPopups(Localizame$LONGITUD, Localizame$LATITUD, popup,
+    options = markerOptions(clickable = T, interactive = T), labelOptions(noHide = F), popupOptions(autoPan = TRUE)
+  )
+
+# Muestra el mapa
+mapa_espana
+```
+
+
+
