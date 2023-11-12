@@ -11,7 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introducción
 
+En este proyecto de Análisis Exploratorio de Datos, haremos un estudio de las precipitaciones en España a lo largo de los últimos años. Los datos para conseguir un buen análisis de este tema, los hemos obtenido de la página de Instituto Nacional de Estadística (*enlace*).
+
+Con estos datos, queremos hacer un análisis de la variación de las precipitaciones a lo largo de los últimos años en todo el territorio español, ver la relación entre las distintas variables climáticas y evaluar si existen correlaciones significativas entre las mismas. Por último, haremos un análisis geoespacial, que nos ayudará a tener una visión más clara sobre todo este estuido.
+
 # Instalación y carga de librerías necesarias
+
+Lo primero que hacemos es cargar todas las librerías que necesitaremos a lo largo del trabajo para una correcta ejecución.
 
 ```{r}
 rm(list=ls())
@@ -22,6 +28,11 @@ pacman::p_load(char=packages)
 
 # Conjunto de datos
 
+Antes de empezar con el análisis de todas las variables, hay que tener claro que sin un buen dataset ordenado no conseguiremos nada. Por lo tando, este es nuestro primer objetivo.
+
+Hemos descargado, desde la página del Instituto Nacional de Estadística, varios archivos que contenían las mediciones de distintas variables meteorológicas en todo el territorio español, separadas por carpetas según el año correspondiente. Acompañando a todos estos archivos, hay un `Maestro_Climatológico` que identifica cada estación meteorológica del país con un indicativo, que es el  que aparece en los archivos de las variables identificando qué datos son de cada estación.
+
+Primero, arreglamos el archivo `Maestro_Climatológico`, ya que lo necesitaremos también más adelante para la representación geoespacial.
 
 ```{r}
 estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
@@ -38,7 +49,6 @@ agregar_separador <- function(numero, posicion) {
     substr(numero_str,posicion + 1, nchar(numero_str))
   )
   
-  # Devolver el resultado como número
   return(as.numeric(numero_formateado))
 }
 
@@ -52,7 +62,11 @@ estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")] <- -e
 
 estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")] <- 10*estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")]
 ```
-Tras un primer visionado de los datos vemos que debido a la codificación existen caracteres erróneos en el csv desde el que cargamos las coordenadas de los municipios. Posteriormente, a la hora de elaborar un mapa interactivo, vemos que las coordenadas precisan una corrección de formato (separador decimal tras los primeros o segundos dígitos según sean longitud o latitud, respectivamente). Hacemos también unas correcciones de las coordenadas de Islas Canarias que aparecen desplazadas hacia la derecha con respecto a la localización correcta.
+
+Tras un primer visionado de los datos vemos que debido a la codificación existen caracteres erróneos en el *csv* desde el que cargamos las coordenadas de los municipios. Posteriormente, a la hora de elaborar un mapa interactivo, vemos que las coordenadas precisan una corrección de formato (separador decimal tras los primeros o segundos dígitos según sean longitud o latitud, respectivamente). Hacemos también unas correcciones de las coordenadas de Islas Canarias que aparecen desplazadas hacia la derecha con respecto a la localización correcta.
+
+
+Nuestra idea principal ha sido la siguiente: crear un dataset por año con las variables que necesitamos para nuestro estudio. Hemos escogido `Humedad`, `Insolación`, `Velocidad del viento`, `Temperaturas mensuales`, `Precipitaciones mensuales`, `Temperaturas máximas mensuales` y `Temperaturas mínimas mensuales`.
 
 ```{r}
 carpeta_base<-"./data/Variables/"
@@ -100,9 +114,13 @@ for (año in años){
 
 ```
 
+Hemos creado una lista, donde cada elemento se corresponde con el Dataset de un año, por ejemplo el de $2022$:
 
+```{r}
+head(lista_dataframes[["2022"]])
+```
 
-Las variables que hemos tenido en consideración de todas las que aparecen en los repositorios de AEMET son:
+En este dataset tenemos una primera variable, `Indicativo`, y para cada indicativo tenemos 13 columnas con datos relativos al mismo, uno por mes y el anual, que es la media de todas las mediciones del año. Para construir este dataset, y por analogía el de los otros años, hemos tenido en consideración las siguientes:
 
   * HR -> humedad relativa mensual/anual (%)
   * INSO -> Media mensual/anual de la insolación diaria (horas)
@@ -111,7 +129,21 @@ Las variables que hemos tenido en consideración de todas las que aparecen en lo
   * TM_MES -> Temperatura media mensual/anual (°C)
   * TM_MIN -> Temperatura media mensual/anual de las mínimas (°C)
 
-De los cuáles analizamos las más representativas.
+De todas las variables que aparecen en los repositorios de AEMET, hemos decidido analizar las arriba expuestas ya que consideramos que son las más representativas para nuestro estudio. De todas formas, adjuntamos en la carpeta del proyecto, un *pdf* donde aparecen todas las variables a las que teníamos acceso.
+
+Echamos un vistazo rápido a como las características principales de nuestro dataset.
+
+```{r}
+summary(lista_dataframes[["2022"]])
+```
+
+Vemos que cada variable tiene varios datos faltantes, por lo que vamos a tratar los datos para suplir estas carencias y poder hacer un buen análisis.
+
+```{r}
+glimpse(lista_dataframes[["2022"]])
+```
+
+Todas nuestras variables, a excepción del Indicativo y los Meses, que son categóricas, son variables numéricas. En particular, la velocidad del tiempo, *W_MED*, es una variable entera.
 
 # Exploración Inicial de los datos
 
@@ -201,6 +233,7 @@ list2env(dataframes_anuales, envir = .GlobalEnv)
 ```
 
 La imputación de datos se lleva a cabo mediante la librería $mice$, concretamente el método empleado por la librería para añadir los valores más coherentes es mediante la mediana de los datos de las variables para cada indicativo:
+
 ```{r}
 summary(imputed_data_filtered)
 ```
@@ -333,7 +366,7 @@ for (df_names in names(dataframes_mensuales)) {
 
 De cara al estudio de los outliers, primero se decidio hacer un estudio visual mediante el graficado de distintos graficos de caja, para cada una de las variables, para el año 2017.
 
-Tras la representación se definio una funcion para calcular todos los outliers de 2017, dicha funcion se define haciendo uso del metodo de boxplot, el cual consiste en definir los cuantiles y los valores que se salgan tanto por el primer cuantil como por el tercer cuantil son los que la funcion determina como outliers. Una vez detectados los meses y las provincias de los outliers se investigo si dichos outliers tenian sentido, tras una extensa busqueda se llego a la conclusion de que los outliers obtenidos se debian a tormentas, olas de calor y mas eventos climatologicos.
+Tras la representación se definió una funcion para calcular todos los outliers de 2017, dicha funcion se define haciendo uso del metodo de boxplot, el cual consiste en definir los cuantiles y los valores que se salgan tanto por el primer cuantil como por el tercer cuantil son los que la funcion determina como outliers. Una vez detectados los meses y las provincias de los outliers se investigo si dichos outliers tenian sentido, tras una extensa busqueda se llego a la conclusion de que los outliers obtenidos se debian a tormentas, olas de calor y mas eventos climatologicos.
 
 Una vez detectados los outliers se amplio el rango de la funcion para todos los años.
 
