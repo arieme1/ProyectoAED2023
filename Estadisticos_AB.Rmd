@@ -420,4 +420,41 @@ ggpairs(pares)
 #,ggplot2::aes(col="black",fill = "lightblue"
 ```
 
+```{r}
+calcular_correlacion_variable <- function(data, variable, region1, region2, metodo = "pearson") {
+  correlacion_resultados <- list()
+  
+  for (i in seq_along(data)) {
+    df_año <- data[[i]]
+    df_año$Indicativo <- factor(df_año$Meses, levels = c("enero", "febrero", "marzo", 
+                                                         "abril", "mayo", "junio", "julio", "agosto" ,
+                                                         "septiembre", "octubre", "noviembre",
+                                                         "diciembre"))
+    df_año$Meses <- factor(df_año$Meses)
+    
+    df_region1 <- df_año[df_año$Provincia %in% region1, ]
+    df_region2 <- df_año[df_año$Provincia %in% region2, ]
+    
+    variable_region1 <- df_region1[[variable]]
+    variable_region2 <- df_region2[[variable]]
+    
+    datos_variables <- data.frame(Region1 = variable_region1, Region2 = variable_region2)
+    correlacion <- cor(datos_variables, method = metodo, use = "complete.obs")
+    
+    nombre_correlacion <- paste0("correlacion_", metodo, "_", 
+                                 paste(c(region1, region2), collapse = "_"), "_", años[i])
+    correlacion_resultados[[nombre_correlacion]] <- correlacion
+  }
+  
+  return(correlacion_resultados)
+}
+
+variable_interes <- "P_MES"
+region1 <- "ASTURIAS"
+region2 <- "PONTEVEDRA"
+
+correlaciones_variables <- calcular_correlacion_variable(dataframes_mensuales, variable_interes, region1, region2, metodo = "pearson")
+
+
+```
 
