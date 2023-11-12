@@ -18,8 +18,10 @@ library(mice)
 
 
 ```{r}
+#emplear este chunck una sola vez para Maestro_Climatologico_2022.csv sucio, al usarlo más veces se corrompe el archivo
 estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
+print(colnames(estaciones))
 
 agregar_separador <- function(numero, posicion) {
   # Convertir el número a cadena de caracteres
@@ -42,8 +44,13 @@ estaciones$LONGITUD <- agregar_separador(estaciones$LONGITUD, 1)
 estaciones$LONGITUD<-estaciones$LONGITUD*(-1)
 
 
-estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")] <- -estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")]
+estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA", "BALEARES")] <- -estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA","BALEARES")]
 
+estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")] <- 10*estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")]
+
+carpeta<-"./data/"
+nombre_archivo <- file.path(carpeta, "Maestro_Climatologico_2022.csv")
+write.csv(estaciones, nombre_archivo, row.names = FALSE)
 
 ```
 
@@ -83,7 +90,7 @@ for (archivo in archivos_climaticos) {
        
       df_año <- left_join(df_año,df_variable, by=join_by("Indicativo","Meses"))
      }
-  
+
 }
   lista_dataframes[[as.character(año)]] <- df_año
   assign(paste0("df_", año), df_año, envir = .GlobalEnv)
@@ -133,12 +140,12 @@ for (df in lista_dataframes){
   Indicativos_df <- unique(unlist(df[,"Indicativo"]))
   I_comunes <- intersect(Indicativos_df, Indicativos_maestro)
   
-  Localizame <- estaciones[,c("Indicativo","PROVINCIA", "LONGITUD", "LATITUD")]
+  Localizame <- estaciones[,c("Indicativo","PROVINCIA", "LONGITUD", "LATITUD", "MUNICIPIO")]
   Localizame <- Localizame%>%subset(Indicativo %in% I_comunes)
 
   data_filtered <- df %>% filter(Meses != "anual")%>%subset(Indicativo %in% I_comunes) 
 
-  imputed_data_filtered <- mice(data_filtered, m = 5) 
+  imputed_data_filtered <- mice(data_filtered, m = 50) 
   imputed_data <- complete(imputed_data_filtered, action = 1) 
 #hago la imputación de datos con mice e introduzco los datos
 
