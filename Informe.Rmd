@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 rm(list=ls())
 library(pacman)
-packages = c("knitr", "ggplot2","tidyr","dplyr","readr","GGally", "mice", "robustbase")
+packages = c("knitr", "ggplot2","tidyr","dplyr","readr","GGally", "mice", "robustbase", "leaflet")
 pacman::p_load(char=packages)
 ```
 
@@ -195,7 +195,7 @@ for (df in lista_dataframes){
   dataframes_mensuales[[nombre_df_m]] <- df_mensual
   i<-i+1
 }
-
+list2env(dataframes_mensuales, envir = .GlobalEnv)
 list2env(dataframes_anuales, envir = .GlobalEnv)
 ```
 
@@ -215,7 +215,7 @@ ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
 ## Comprobación de outliers
 
 ```{r}
-grupo <- imputed_data %>% group_by(Indicativo, Meses)
+grupo <- df_mensual2022 %>% group_by(Indicativo, Meses)
 
 grupo$Meses <- factor(grupo$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
 
@@ -267,6 +267,7 @@ grupo %>%
 ## Estadísticos
 
 ```{r}
+d_prueba <- df_mensual2022%>%group_by(Meses)
 estadisticos <- d_prueba %>%
   summarise(across(where(is.numeric), 
                    list(mean = ~mean(., na.rm = TRUE), 
@@ -279,12 +280,66 @@ estadisticos <- d_prueba %>%
 *Mediana Absoluta de la Desviación*
 
 ```{r}
-columnas_variables<- d_prueba[,!(names(d_prueba) %in% c("Indicativo", "Meses"))]
+columnas_variables<- d_prueba[,!(names(d_prueba) %in% c("Indicativo", "Meses", "PROVINCIA", "LONGITUD", "LATITUD", "MUNICIPIO"))]
 mad_<- sapply(columnas_variables, mad)
 print(mad_)
 ```
 
 # Análisis Univariado
+
+
+```{r}
+#COMPLETO 2016:2022
+library(ggthemes)
+
+lluvias_2022 <- df_mensual2022 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2022)
+lluvias_2021 <- df_mensual2021 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2021)
+lluvias_2020 <- df_mensual2020 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2020)
+lluvias_2019 <- df_mensual2019 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2019)
+lluvias_2018 <- df_mensual2018 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2018)
+lluvias_2017 <- df_mensual2017 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2017)
+
+
+lluvias <- bind_rows(lluvias_2022,lluvias_2021, lluvias_2020,lluvias_2019)
+lluvias$Meses <- factor(lluvias$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+# Crea el gráfico de línea
+
+precipitaciones = ggplot(lluvias, aes(x = Meses, y = prom_HR, group = Año))+geom_line(aes(linetype =  factor(Año),color=factor(Año)),size = 1.3, alpha = 0.7) + labs(title = "Promedio mensual de precipitaciones", subtitle = "España 2022", x = "Meses", y = "Precipitaciones (mm)")+ theme_fivethirtyeight() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(legend.title=element_blank())
+precipitaciones
+
+```
+
+```{r}
+tmax_2022 <- df_mensual2022 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2022)
+tmax_2021 <- df_mensual2021 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2021)
+tmax_2020 <- df_mensual2020 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2020)
+tmax_2019 <- df_mensual2019 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2019)
+tmax_2018 <- df_mensual2018 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2018)
+tmax_2017 <- df_mensual2017 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2017)
+
+tmaximas <- bind_rows(tmax_2022, tmax_2021, tmax_2020,tmax_2019)
+tmaximas$Meses <- factor(tmaximas$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+maximas = ggplot(tmaximas, aes(x = Meses, y = prom_tmax, group = Año))+geom_line(aes(linetype =  factor(Año),color=factor(Año)),size = 1, alpha = 0.7) + labs(title = "Temperaturas máximas", subtitle = "España 2022", x = "Meses", y = "Temperatura (ºC)")+ theme_fivethirtyeight() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(legend.title=element_blank()) + scale_color_brewer(palette = "PuOr")
+maximas
+```
+
+```{r}
+tmed_2022 <- df_mensual2022 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2022)
+tmed_2021 <- df_mensual2021 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2021)
+tmed_2020 <- df_mensual2020 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2020)
+tmed_2019 <- df_mensual2019 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2019)
+tmed_2018 <- df_mensual2018 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2018)
+tmed_2017 <- df_mensual2017 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2017)
+
+tmed <- bind_rows(tmed_2022, tmed_2021, tmed_2020,tmed_2019)
+tmed$Meses <- factor(tmed$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto" ,"septiembre", "octubre", "noviembre", "diciembre"))
+
+medias = ggplot(tmed, aes(x = Meses, y = prom_tmed, group = Año))+geom_line(aes(linetype =  factor(Año),color=factor(Año)),size = 1, alpha = 0.7) + labs(title = "Temperaturas medias", subtitle = "España 2022", x = "Meses", y = "Temperatura (ºC)")+ theme_fivethirtyeight() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(legend.title=element_blank()) + scale_color_brewer(palette = "Set2")
+medias
+```
+
 
 # Análisis Bivariado
 
@@ -315,6 +370,26 @@ ggpairs(columnas_variables)
 
 
 # Visualización de los datos
+
+### Mapa interactivo
+
+```{r}
+mapa_espana <- leaflet() %>%
+  addTiles() %>%
+  setView(lng = -4, lat = 40, zoom = 6) %>% addCircles(lng = df_anual2022$LONGITUD, lat = df_anual2022$LATITUD, data = df_anual2022,radius = 5, popup = paste0(
+  df_anual2022$MUNICIPIO,"<hr>",
+  "T. Med (ºC):", round(df_anual2022$TM_MES,1),"<br>",
+  "T. Max (ºC):", round(df_anual2022$TM_MAX,1),"<br>",
+  "Precipitaciones (mm):", round(df_anual2022$P_MES),"<br>",
+  "Insolación (horas):", round(df_anual2022$INSO,1)))
+
+# Muestra el mapa
+mapa_espana
+```
+
+
+
+
 
 # Conclusiones
 
