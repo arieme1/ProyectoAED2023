@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 rm(list=ls())
 library(pacman)
 packages = c("knitr", "ggplot2","tidyr","dplyr","readr","GGally", "mice", "robustbase")
-pacman::p_load(char=packages) 
+pacman::p_load(char=packages)  
 ```
 
 # Conjunto de datos
