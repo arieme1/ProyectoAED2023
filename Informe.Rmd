@@ -52,7 +52,7 @@ estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")] <- -e
 
 estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")] <- 10*estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")]
 ```
-
+Tras un primer visionado de los datos vemos que debido a la codificación existen caracteres erróneos en el csv desde el que cargamos las coordenadas de los municipios. Posteriormente, a la hora de elaborar un mapa interactivo, vemos que las coordenadas precisan una corrección de formato (separador decimal tras los primeros o segundos dígitos según sean longitud o latitud, respectivamente). Hacemos también unas correcciones de las coordenadas de Islas Canarias que aparecen desplazadas hacia la derecha con respecto a la localización correcta.
 
 ```{r}
 carpeta_base<-"./data/Variables/"
@@ -102,8 +102,7 @@ for (año in años){
 
 
 
-
-Variables:
+Las variables que hemos tenido en consideración de todas las que aparecen en los repositorios de AEMET son:
 
   * HR -> humedad relativa mensual/anual (%)
   * INSO -> Media mensual/anual de la insolación diaria (horas)
@@ -111,6 +110,8 @@ Variables:
   * TM_MAX -> Temperatura media mensual/anual de las máximas (°C)
   * TM_MES -> Temperatura media mensual/anual (°C)
   * TM_MIN -> Temperatura media mensual/anual de las mínimas (°C)
+
+De los cuáles analizamos las más representativas.
 
 # Exploración Inicial de los datos
 
@@ -150,7 +151,7 @@ d_prueba<- imputed_data_2016 %>% group_by(Meses)
 
 ```
 
-
+A partir de los dataset para cada año obtenidos de los dataset para cada variable climatológica, queremos costruir un nuevo dataset en el que además de recopilar dicha información, imputemos los valores correspondientes allá donde tenemos NA's. Esto lo haremos para cada año mediante un bucle, por el cuál separaremos los valores anuales de las variables (suma de los meses en el caso de las precipitaciones y promedio en el caso del resto de variables) del resto del dataset y crearemos un nuevo dataset para cada año donde se almacenen los valores anuales para cada estación meteorológica y cada variable. 
 
 ```{r}
 #ANUAL
@@ -173,7 +174,7 @@ for (df in lista_dataframes){
 
   data_filtered <- df %>% filter(Meses != "anual")%>%subset(Indicativo %in% I_comunes) 
 
-  imputed_data_filtered <- mice(data_filtered, m = 15) 
+  imputed_data_filtered <- mice(data_filtered, m = 5) 
   imputed_data <- complete(imputed_data_filtered, action = 1) 
 #hago la imputación de datos con mice e introduzco los datos
 
@@ -198,6 +199,15 @@ for (df in lista_dataframes){
 list2env(dataframes_mensuales, envir = .GlobalEnv)
 list2env(dataframes_anuales, envir = .GlobalEnv)
 ```
+
+La imputación de datos se lleva a cabo mediante la librería $mice$, concretamente el método empleado por la librería para añadir los valores más coherentes es mediante la mediana de los datos de las variables para cada indicativo:
+```{r}
+summary(imputed_data_filtered)
+```
+
+
+Una vez imputados los datos para los dataset que contienen la información mensual, adherimos las columnas de coordenadas, provincia y municipio para ubicar dichas estaciones espacialmente.
+
 
 
 ## Visualización de los datos
@@ -377,7 +387,12 @@ for (i in seq_along(dataframes_mensuales)) {
 
 
 # Análisis Univariado
+<<<<<<< HEAD
 Tras el analisis de los outliers y los estadisticos de nuestro dataset, se empieza a hacer un estudio univariado de las distintas variables de interes.
+=======
+
+El análisis univariante que podemos realizar para nuestro conjunto de datos está limitado a las variables numéricas, ya que no contamos con variables categóricas. El estudio más represenativo para nuestros datos consiste en estudiar la evolución de las precipitaciones y las temperaturas mensuales para los años de los que tenemos información, desde 2017 hasta 2022. Hemos rechazado incluir los datos de 2016 por no aportar más información al análisis y así evitar saturar nuestros gráficos.
+>>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
 
 ```{r}
 #COMPLETO 2016:2022
@@ -400,8 +415,14 @@ precipitaciones = ggplot(lluvias, aes(x = Meses, y = prom_HR, group = Año))+geo
 precipitaciones
 
 ```
+<<<<<<< HEAD
 En esta primera grafica se representa la variacion de las temperaturas a lo largo de los meses para los años 2019,2020,2021,2022. Se puede observar una clara tendencia de disminucion entre los meses mas calientes, mientras que cuando se acerca el otoño y el invierno las precipitaciones aumentan.
 Otra cosa destacable es que a medida que pasan los años se puede observar que las precipitaciones aumentan de manera general.
+=======
+
+Puede apreciarse una bajada considerable de las precipitaciones en España en 2022 con respecto a los dos últimos años anteriores, equiparándose a las precipitaciones del año 2019. Procedemos análogamente con las temperaturas máxima y media.
+
+>>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
 ```{r}
 tmax_2022 <- df_mensual2022 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2022)
 tmax_2021 <- df_mensual2021 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2021)
@@ -431,8 +452,13 @@ tmed$Meses <- factor(tmed$Meses, levels = c("enero", "febrero", "marzo", "abril"
 medias = ggplot(tmed, aes(x = Meses, y = prom_tmed, group = Año))+geom_line(aes(linetype =  factor(Año),color=factor(Año)),size = 1, alpha = 0.7) + labs(title = "Temperaturas medias", subtitle = "España 2022", x = "Meses", y = "Temperatura (ºC)")+ theme_fivethirtyeight() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(legend.title=element_blank()) + scale_color_brewer(palette = "Set2")
 medias
 ```
+<<<<<<< HEAD
 En las dos graficas siguientes se puede observar tanto la temperatura maxima como la temperatura media a lo largo de los años en toda España, se observa que los meses mas calidos son de septiembre a agosto mientras que en el resto de meses la temperatura disminuye por debajo de los 15 grados. 
 
+=======
+
+Al comparar con los resúmenes estacionales climatológicos de AEMET para 2022 [*] (referenciar) vemos que los datos que representamos se mantienen coherentes con los expuestos en los resúmenes oficiales, por lo que nos inclinamos a pensar que la imputación de los datos por parte de la librería empleada es válida.
+>>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
 # Análisis Bivariado
 
 ```{r}
@@ -626,6 +652,8 @@ ggpairs(pares)
 # Visualización de los datos
 
 ### Mapa interactivo
+
+En el mapa interactivo se muestran las estaciones meteorológicas donde se tomaron los datos para cada año correspondiente. Mostramos el municipio donde se ubican y algunas variables anuales de las mismas.
 
 ```{r}
 mapa_espana <- leaflet() %>%
@@ -831,8 +859,6 @@ anim_save("grafica_animada3.gif", animation = grafica_animada3, renderer = gifsk
 browseURL("grafica_animada3.gif")
 
 ```
-
-
 
 # Conclusiones
 
