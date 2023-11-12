@@ -66,9 +66,6 @@ lluvias_2022 %>%
   labs(x = "Mes", y = "Promedio mensual en España 2022 (mm)", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 45, hjust = 1))+
   theme_minimal()
 
-
-
-
 ```
 
 ```{r}
