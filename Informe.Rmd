@@ -11,9 +11,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Introducción
 
-En este proyecto de Análisis Exploratorio de Datos, haremos un estudio de las precipitaciones en España a lo largo de los últimos años. Los datos para conseguir un buen análisis de este tema, los hemos obtenido de la página de Instituto Nacional de Estadística (*enlace*).
+En este proyecto de Análisis Exploratorio de Datos, haremos un estudio sobre las precipitaciones en España a lo largo de los últimos años. Los datos para conseguir un buen análisis de este tema, los hemos obtenido de la página de Instituto Nacional de Estadística: (*enlace*).
 
-Con estos datos, queremos hacer un análisis de la variación de las precipitaciones a lo largo de los últimos años en todo el territorio español, ver la relación entre las distintas variables climáticas y evaluar si existen correlaciones significativas entre las mismas. Por último, haremos un análisis geoespacial, que nos ayudará a tener una visión más clara sobre todo este estuido.
+El objetivo de este trabajo es hacer un análisis de la variación de las precipitaciones a lo largo de los últimos años en todo el territorio español, ver la relación entre las distintas variables climáticas y evaluar si existen correlaciones significativas entre las mismas. Por último, haremos un análisis geoespacial, que nos ayudará a tener una visión más clara sobre todo este estudio.
 
 # Instalación y carga de librerías necesarias
 
@@ -22,7 +22,7 @@ Lo primero que hacemos es cargar todas las librerías que necesitaremos a lo lar
 ```{r}
 rm(list=ls())
 library(pacman)
-packages = c("knitr", "ggplot2","tidyr","dplyr","readr","GGally", "mice", "robustbase", "leaflet")
+packages = c("knitr", "ggplot2","gganimate","tidyr","dplyr","readr","GGally", "mice", "robustbase", "leaflet")
 pacman::p_load(char=packages)
 ```
 
@@ -120,7 +120,7 @@ Hemos creado una lista, donde cada elemento se corresponde con el Dataset de un 
 head(lista_dataframes[["2022"]])
 ```
 
-En este dataset tenemos una primera variable, `Indicativo`, y para cada indicativo tenemos 13 columnas con datos relativos al mismo, uno por mes y el anual, que es la media de todas las mediciones del año. Para construir este dataset, y por analogía el de los otros años, hemos tenido en consideración las siguientes:
+La primera variable de este dataset es: `Indicativo`. A cada indicativo le corresponden 13 columnas con datos relativos al mismo, una por mes y la anual. Para construir este dataset, y por analogía el de los otros años, hemos tenido en consideración las siguientes las siguientes variables:
 
   * HR -> humedad relativa mensual/anual (%)
   * INSO -> Media mensual/anual de la insolación diaria (horas)
@@ -129,7 +129,7 @@ En este dataset tenemos una primera variable, `Indicativo`, y para cada indicati
   * TM_MES -> Temperatura media mensual/anual (°C)
   * TM_MIN -> Temperatura media mensual/anual de las mínimas (°C)
 
-De todas las variables que aparecen en los repositorios de AEMET, hemos decidido analizar las arriba expuestas ya que consideramos que son las más representativas para nuestro estudio. De todas formas, adjuntamos en la carpeta del proyecto, un *pdf* donde aparecen todas las variables a las que teníamos acceso.
+De todas las variables que aparecen en los repositorios de AEMET, hemos decidido analizar las arriba expuestas ya que consideramos que son las más representativas para nuestro estudio. De todas formas, adjuntamos en la carpeta del proyecto un *pdf* donde aparecen todas las variables a las que teníamos acceso.
 
 Echamos un vistazo rápido a como las características principales de nuestro dataset.
 
@@ -286,8 +286,7 @@ for (nombre_df in nombres_dataframes) {
 grafico_outliers_pmes <- df_mensual2017 %>%
   ggplot(aes(x = PROVINCIA , y = P_MES)) +
   geom_boxplot() +
-  labs(title = "Precipitaciones Medias por Provincia Outliers", x = "Provincia", y = "Precipitaciones") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  labs(title = "Precipitaciones Medias por Provincia Outliers", x = "Provincia", y = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 grafico_outliers_pmes
 
@@ -370,11 +369,15 @@ Tras la representación se definió una funcion para calcular todos los outliers
 
 Una vez detectados los outliers se amplio el rango de la funcion para todos los años.
 
-Tras la identificacion de en que consistian los outliers se decidio dejarlos ya que pueden ser de interes para un estudio.
+Tras la identificacion de en que consistian los outliers se decidio dejarlos ya que pueden ser de interés para un estudio.
 
 
 
 ## Estadísticos
+
+En este apartado calculamos para cada año y para cada Indicativo los estadísticos de cada variable, la media, la mediana, la desviación típica, el rango intercuartílico, y la desviación media absoluta.
+
+Lo hacemos de dos formas distintas: primero calculamos los estadísticos para cada indicativo y después hacemos lo mismo pero para todo el territorio español y mensualmente. Igual que en el resto de apartados, almacenamos todos los resultados en una lista y en cada elemento de la lista se encuentran los datos para cada año.
 
 ```{r}
 estadisticos_indicativo <- list()
@@ -384,11 +387,11 @@ años <- 2016:2022
 
 for (i in seq_along(dataframes_mensuales)) {
   df_año <- dataframes_mensuales[[i]]
-  df_año$Indicativo <- factor(df_año$Meses, levels = c("enero", "febrero", "marzo", 
+  df_año$Meses <- factor(df_año$Meses, levels = c("enero", "febrero", "marzo", 
                                                        "abril", "mayo", "junio", "julio", "agosto" ,
                                                        "septiembre", "octubre", "noviembre",
                                                        "diciembre"))
-  df_año$Meses <- factor(df_año$Meses)
+  df_año$Indicativo <- factor(df_año$Indicativo)
 
   esta_por_indicativo <- df_año %>%
     group_by(Indicativo) %>%
@@ -414,18 +417,23 @@ for (i in seq_along(dataframes_mensuales)) {
   nombre_mes <- paste0("esta_por_mes_", años[i])
   estadisticos_meses[[nombre_mes]] <- esta_por_mes
 }
-
-
 ```
 
+Por ejemplo, los estadísticos para cada uno de los indicativos en el último año se tienen guardados de la siguiente manera:
+
+```{r}
+head(estadisticos_indicativo[["esta_por_indicativo_2022"]])
+```
+
+Profundizamos más en el análisis variable por variable:
 
 # Análisis Univariado
-<<<<<<< HEAD
+
 Tras el analisis de los outliers y los estadisticos de nuestro dataset, se empieza a hacer un estudio univariado de las distintas variables de interes.
-=======
+
 
 El análisis univariante que podemos realizar para nuestro conjunto de datos está limitado a las variables numéricas, ya que no contamos con variables categóricas. El estudio más represenativo para nuestros datos consiste en estudiar la evolución de las precipitaciones y las temperaturas mensuales para los años de los que tenemos información, desde 2017 hasta 2022. Hemos rechazado incluir los datos de 2016 por no aportar más información al análisis y así evitar saturar nuestros gráficos.
->>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
+
 
 ```{r}
 #COMPLETO 2016:2022
@@ -448,14 +456,14 @@ precipitaciones = ggplot(lluvias, aes(x = Meses, y = prom_HR, group = Año))+geo
 precipitaciones
 
 ```
-<<<<<<< HEAD
+
+
 En esta primera grafica se representa la variacion de las temperaturas a lo largo de los meses para los años 2019,2020,2021,2022. Se puede observar una clara tendencia de disminucion entre los meses mas calientes, mientras que cuando se acerca el otoño y el invierno las precipitaciones aumentan.
 Otra cosa destacable es que a medida que pasan los años se puede observar que las precipitaciones aumentan de manera general.
-=======
+
 
 Puede apreciarse una bajada considerable de las precipitaciones en España en 2022 con respecto a los dos últimos años anteriores, equiparándose a las precipitaciones del año 2019. Procedemos análogamente con las temperaturas máxima y media.
 
->>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
 ```{r}
 tmax_2022 <- df_mensual2022 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2022)
 tmax_2021 <- df_mensual2021 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2021)
@@ -485,14 +493,17 @@ tmed$Meses <- factor(tmed$Meses, levels = c("enero", "febrero", "marzo", "abril"
 medias = ggplot(tmed, aes(x = Meses, y = prom_tmed, group = Año))+geom_line(aes(linetype =  factor(Año),color=factor(Año)),size = 1, alpha = 0.7) + labs(title = "Temperaturas medias", subtitle = "España 2022", x = "Meses", y = "Temperatura (ºC)")+ theme_fivethirtyeight() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(legend.title=element_blank()) + scale_color_brewer(palette = "Set2")
 medias
 ```
-<<<<<<< HEAD
+
 En las dos graficas siguientes se puede observar tanto la temperatura maxima como la temperatura media a lo largo de los años en toda España, se observa que los meses mas calidos son de septiembre a agosto mientras que en el resto de meses la temperatura disminuye por debajo de los 15 grados. 
 
-=======
+
 
 Al comparar con los resúmenes estacionales climatológicos de AEMET para 2022 [*] (referenciar) vemos que los datos que representamos se mantienen coherentes con los expuestos en los resúmenes oficiales, por lo que nos inclinamos a pensar que la imputación de los datos por parte de la librería empleada es válida.
->>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
+
+
 # Análisis Bivariado
+
+Después de análizar cada una de las variables individualmente, tiene sentido pensar que algunas de ellas guardan cierto grado de relación entre ellas. Es el punto de estudiar esta relación. Empezamos con un análisis numérico, para ello calculamos la matriz de Correlación de Pearson, la matriz de Correlación de Spearman y la matriz de Covarianzas.
 
 ```{r}
 correlacion_pearson <- list()
@@ -525,6 +536,8 @@ for (i in seq_along(dataframes_mensuales)) {
 
 ```
 
+Hemos almacenado en las listas `correlacion_pearson`, `correlacion_spearman` y `covarianzas` las matrices correspondientes, cada elemento de cada lista se corresponde con la respectiva matriz relativa a cada año de nuestro estudio. Analizaremos estos resultado más adelante, primero veamos estos resultados año por año gráficamente con la función `corrplot`. 
+
 
 ```{r}
 # Configurar el diseño de la ventana gráfica
@@ -548,7 +561,7 @@ Vemos que, en general, estes gráficos que representan la correlación entre las
 corrplot(correlacion_pearson[["correlacion_pearson_2022"]], type = "lower", diag = FALSE)
 ```
 
-Por entender un poco mejor lo que nos quiere decir esta gráfica, cuan más grande es el círculo situado en las correspondientes casillas de las variables, más fuerte es la relación entre ellas (en azul si dicha correlación es lineal positiva y en rojo si es negativa). Cuanto más se reduce el tamaño del círculo, esto indica que la correlación entre las variables disminuye.
+Para entender un poco mejor lo que nos quiere decir esta gráfica, cuan más grande es el círculo situado en las correspondientes casillas de las variables, más fuerte es la relación entre ellas (en azul si dicha correlación es lineal positiva y en rojo si es negativa). Cuanto más se reduce el tamaño del círculo, esto indica que la correlación entre las variables disminuye.
 
 Por lo tanto, las conclusiones que extraemos de analizar este gráfico son las siguientes:
 
@@ -564,11 +577,11 @@ Por lo tanto, las conclusiones que extraemos de analizar este gráfico son las s
   
 * Por lo demás, las relaciones más destacables (teniendo en cuenta el objetivo de nuestro estudio) que extraemos del gráfico son las siguientes:
 
-  * insolacion y precipitaciones medias
-  * insolacion y humedad
-  * temperatura maxima y precipitacion mes
-  * temperatura maxima y humedad
-  * temperatura maxima e insolacion
+  * Insolacion y Precipitaciones medias mensuales.
+  * Insolacion y Humedad.
+  * Temperatura máxima y Precipitaciones medias mensuales.
+  * Temperatura máxima y Humedad.
+  * Temperatura máxima e Insolacion
 
 Además de centrarnos en el gráfico, echemos un ojo a la matriz de correlaciones, tanto de Pearson como la de Spearman y la matriz de covarianzas.
 
@@ -579,7 +592,7 @@ Además de centrarnos en el gráfico, echemos un ojo a la matriz de correlacione
 correlacion_pearson[["correlacion_pearson_2022"]]
 ```
 
-* Coeficiente de Correlación de Spearman: Evalúa la relación monótona entre dos variables.
+* Coeficiente de Correlación de Spearman: Evalúa la relación monótona entre las dos variables consideradas.
 
 ```{r}
 correlacion_spearman[["correlacion_spearman_2022"]]
@@ -611,11 +624,10 @@ T_MES<-dataframes_mensuales[["df_mensual2022"]]%>%
 ```{r}
 correlation_matrix <- cor(d_22[, c("HR", "P_MES", "INSO", "TM_MAX")])
 heatmap(correlation_matrix)
-
 ```
 
 
-  * Insolacion y Precipitaciones medias
+  * Insolacion y Precipitaciones medias mensuales.
   
 ```{r}
 library(ggplot2)
@@ -706,6 +718,7 @@ mapa_espana
 
 
 #Graficas animadas para cada mes
+
 ```{r}
 p <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = P_MES, group = Meses)) +
   geom_line() +
@@ -804,6 +817,7 @@ browseURL("WM_animada.gif")
 
 
 #Graficas Anuales de interes
+
 ```{r}
 dataset_anual_2 <- data.frame(df_anual2017$P_MES, df_anual2018$P_MES)
 dataset_anual_3 <- data.frame(dataset_anual_2, df_anual2019$P_MES)
