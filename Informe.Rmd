@@ -2,28 +2,46 @@
 title: "Informe"
 author: "Mar Riveiro Cabado"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document:
+    toc: true
+  pdf_document:
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
 # Introducción
+
+En este proyecto de Análisis Exploratorio de Datos, haremos un estudio sobre las precipitaciones en España a lo largo de los últimos años. Los datos para conseguir un buen análisis de este tema, los hemos obtenido de la página de Instituto Nacional de Estadística (INE a partir de ahora): (*enlace*).
+
+El objetivo de este trabajo es hacer un análisis de la variación de las precipitaciones a lo largo de los últimos años en todo el territorio español, ver la relación entre las distintas variables climáticas y evaluar si existen correlaciones significativas entre las mismas.
 
 # Instalación y carga de librerías necesarias
 
-```{r}
+Lo primero que hacemos es cargar todas las librerías que necesitaremos a lo largo del trabajo para una correcta ejecución.
+
+```{r echo=TRUE}
 rm(list=ls())
 library(pacman)
-packages = c("knitr", "ggplot2","tidyr","dplyr","readr","GGally", "mice", "robustbase", "leaflet")
+packages = c("knitr", "ggplot2","gganimate","tidyr","dplyr","readr","GGally",
+             "mice", "robustbase", "leaflet","gifski")
 pacman::p_load(char=packages)
 ```
 
 # Conjunto de datos
 
+Antes de empezar con el análisis de todas las variables, hay que tener claro que sin un buen dataset ordenado no conseguiremos nada. Por lo tanto, este es nuestro primer objetivo.
 
-```{r}
+Hemos descargado, desde la página del INE, varios archivos que contenían las mediciones de distintas variables meteorológicas en todo el territorio español, separadas por carpetas según el año correspondiente. Acompañando a todos estos archivos, hay un `Maestro_Climatológico` que identifica cada estación meteorológica del país con un indicativo, que es el  que aparece en los archivos de las variables identificando qué datos son de cada estación.
+
+Primero, arreglamos el archivo `Maestro_Climatológico`, ya que lo necesitaremos también más adelante para la representación geoespacial.
+
+```{r warning=FALSE, include=FALSE}
+
 estaciones<-read_delim("./data/Maestro_Climatologico_2022.csv", 
     delim = ";", escape_double = FALSE, trim_ws = TRUE,show_col_types = FALSE)
 
@@ -38,7 +56,6 @@ agregar_separador <- function(numero, posicion) {
     substr(numero_str,posicion + 1, nchar(numero_str))
   )
   
-  # Devolver el resultado como número
   return(as.numeric(numero_formateado))
 }
 
@@ -48,13 +65,20 @@ estaciones$LONGITUD <- agregar_separador(estaciones$LONGITUD, 1)
 estaciones$LONGITUD<-estaciones$LONGITUD*(-1)
 
 
-estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")] <- -estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")]
+estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")] <-
+  -estaciones$LONGITUD[estaciones$PROVINCIA %in% c("TARRAGONA", "BARCELONA")]
 
-estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")] <- 10*estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")]
+estaciones$LONGITUD[estaciones$PROVINCIA %in% c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")] <-
+  10*estaciones$LONGITUD[estaciones$PROVINCIA %in% 
+                           c("LAS PALMAS", "SANTA CRUZ DE TENERIFE")]
 ```
-Tras un primer visionado de los datos vemos que debido a la codificación existen caracteres erróneos en el csv desde el que cargamos las coordenadas de los municipios. Posteriormente, a la hora de elaborar un mapa interactivo, vemos que las coordenadas precisan una corrección de formato (separador decimal tras los primeros o segundos dígitos según sean longitud o latitud, respectivamente). Hacemos también unas correcciones de las coordenadas de Islas Canarias que aparecen desplazadas hacia la derecha con respecto a la localización correcta.
 
-```{r}
+Tras un primer visionado de los datos vemos que debido a la codificación existen caracteres erróneos en el *csv* desde el que cargamos las coordenadas de los municipios. Posteriormente, a la hora de elaborar un mapa interactivo, vemos que las coordenadas precisan una corrección de formato (separador decimal tras los primeros o segundos dígitos según sean longitud o latitud, respectivamente). Hacemos también unas correcciones de las coordenadas de Islas Canarias que aparecen desplazadas hacia la derecha con respecto a la localización correcta.
+
+
+Nuestra idea principal ha sido la siguiente: crear un dataset por año con las variables que necesitamos para nuestro estudio. Hemos escogido `Humedad`, `Insolación`, `Velocidad del viento`, `Temperaturas mensuales`, `Precipitaciones mensuales`, `Temperaturas máximas mensuales` y `Temperaturas mínimas mensuales`.
+
+```{r include=FALSE}
 carpeta_base<-"./data/Variables/"
 
 años<-2016:2022
@@ -100,9 +124,13 @@ for (año in años){
 
 ```
 
+Hemos creado una lista (puede verse el código detallado en el fichero Rmd), donde cada elemento se corresponde con el Dataset de un año, por ejemplo el de $2022$:
 
+```{r}
+head(lista_dataframes[["2022"]])
+```
 
-Las variables que hemos tenido en consideración de todas las que aparecen en los repositorios de AEMET son:
+La primera variable de este dataset es: `Indicativo`. A cada indicativo le corresponden 13 columnas con datos relativos al mismo, una por mes y la anual. Para construir este dataset, y por analogía el de los otros años, hemos tenido en consideración las siguientes las siguientes variables:
 
   * HR -> humedad relativa mensual/anual (%)
   * INSO -> Media mensual/anual de la insolación diaria (horas)
@@ -111,13 +139,26 @@ Las variables que hemos tenido en consideración de todas las que aparecen en lo
   * TM_MES -> Temperatura media mensual/anual (°C)
   * TM_MIN -> Temperatura media mensual/anual de las mínimas (°C)
 
-De los cuáles analizamos las más representativas.
+Los datos faltantes del dataset aparecen identificados como `NA`.
+
+De todas las variables que aparecen en los repositorios de AEMET, hemos decidido analizar las arriba expuestas ya que consideramos que son las más representativas para nuestro estudio. De todas formas, adjuntamos en la carpeta del proyecto un *pdf* donde aparecen todas las variables a las que teníamos acceso.
+
+Echamos un vistazo rápido a cómo son las características principales de nuestro dataset.
+
+
+```{r}
+glimpse(lista_dataframes[["2022"]])
+```
+
+Vemos que cada variable tiene varios datos faltantes, por lo que vamos a tratar los datos para suplir estas carencias y poder hacer un buen análisis.
+
+Todas nuestras variables, a excepción del Indicativo y los Meses, que son categóricas, son variables numéricas. En particular, la velocidad del tiempo, *W_MED*, es una variable entera.
 
 # Exploración Inicial de los datos
 
 ## Comprobación de datos faltantes e imputación
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 faltan_2016<- colMeans(is.na(df_2016)) * 100
 
 data_filtered <- df_2016 %>% filter(Meses != "anual") #filtro el dataset quitando los años
@@ -151,9 +192,9 @@ d_prueba<- imputed_data_2016 %>% group_by(Meses)
 
 ```
 
-A partir de los dataset para cada año obtenidos de los dataset para cada variable climatológica, queremos costruir un nuevo dataset en el que además de recopilar dicha información, imputemos los valores correspondientes allá donde tenemos NA's. Esto lo haremos para cada año mediante un bucle, por el cuál separaremos los valores anuales de las variables (suma de los meses en el caso de las precipitaciones y promedio en el caso del resto de variables) del resto del dataset y crearemos un nuevo dataset para cada año donde se almacenen los valores anuales para cada estación meteorológica y cada variable. 
+A partir de los dataset para cada año obtenidos de los originales para cada variable climatológica queremos costruir uno nuevo en el que además de recopilar dicha información, imputemos los valores correspondientes allá donde tenemos NA's. Esto lo haremos para cada año mediante un bucle, por el cuál separaremos los valores anuales de las variables (suma de los meses en el caso de las precipitaciones y promedio en el caso del resto de variables) del resto del dataset y crearemos un nuevo dataset para cada año donde se almacenen los valores anuales para cada Indicativo y cada variable. 
 
-```{r}
+```{r include=FALSE}
 #ANUAL
 estaciones <- estaciones %>%
   rename(Indicativo = INDICATIVO)
@@ -174,7 +215,7 @@ for (df in lista_dataframes){
 
   data_filtered <- df %>% filter(Meses != "anual")%>%subset(Indicativo %in% I_comunes) 
 
-  imputed_data_filtered <- mice(data_filtered, m = 5) 
+  imputed_data_filtered <- mice(data_filtered, m = 20) 
   imputed_data <- complete(imputed_data_filtered, action = 1) 
 #hago la imputación de datos con mice e introduzco los datos
 
@@ -201,41 +242,48 @@ list2env(dataframes_anuales, envir = .GlobalEnv)
 ```
 
 La imputación de datos se lleva a cabo mediante la librería $mice$, concretamente el método empleado por la librería para añadir los valores más coherentes es mediante la mediana de los datos de las variables para cada indicativo:
-```{r}
-summary(imputed_data_filtered)
-```
 
+```{r}
+summary(dataframes_mensuales[["df_mensual2022"]])
+```
 
 Una vez imputados los datos para los dataset que contienen la información mensual, adherimos las columnas de coordenadas, provincia y municipio para ubicar dichas estaciones espacialmente.
 
+```{r eval=FALSE, include=FALSE}
+head(df_mensual2022,6)
+```
 
+Es importante recordar que, a pesar de que sólo mostramos como ejemplo el dataset obtenido para 2022, en el archivo Rmd aparecen los mismos para los años anteriores hasta 2017.
 
 ## Visualización de los datos
 
-```{r}
-grupo <- imputed_data_2016 %>% group_by(Indicativo, Meses)
+Una vez imputados los `NA` estamos en posición de ver el aspecto de nuestros datos.
 
-ggplot(grupo, aes(x = grupo$Meses, y = grupo$P_MES , fill = grupo$Indicativo)) +
+```{r echo=FALSE, warning=FALSE}
+df_mensual2022$Meses <- factor(df_mensual2022$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"))
+df_mensual2022 %>% 
+  ggplot(aes(x = Meses, y = P_MES, fill = Meses)) +
   geom_bar(stat = "identity") +
-  labs(x = "Mes", y = "Promedio de Valor", title = "Precipitaciones") + theme(axis.text.x = element_text(angle = 90, hjust = 1))+
-  theme_minimal()
+  labs(title = "Precipitaciones mensuales 2022 (mm)", x = "Meses",
+       y = "Precipitaciones") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))+ theme(plot.margin = margin(1, 1, 2, 2, "cm"))
+df_mensual2022 %>% 
+  ggplot(aes(x = Meses , y = HR, fill=Meses)) +
+  geom_bar(stat = "identity")  +
+  labs(title = "Humedad (%)", x = "Meses", y = "Humedad relativa") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),plot.margin = margin(1, 1, 2, 2, "cm"))
 ```
-
 
 ## Comprobación de outliers
 
-```{r}
+
+```{r eval=FALSE, include=FALSE}
 library(ggplot2)
 library(gganimate)
 factorizar_meses <- function(df) {
   df$Meses <- factor(df$Meses, levels = c("enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"))
   return(df)
 }
-
-#Para el calculo de outliers se hizo uso de la regla MADM
-outliers <- which(abs(grupo$W_MED- median(grupo$W_MED)) > 3*mad(grupo$W_MED))
-
-
 nombres_dataframes <- c("df_mensual2016", "df_mensual2017", "df_mensual2018", "df_mensual2019", "df_mensual2020", "df_mensual2021", "df_mensual2022")
 
 # Bucle for para factorizar la columna Meses en cada dataframe
@@ -253,8 +301,8 @@ for (nombre_df in nombres_dataframes) {
 grafico_outliers_pmes <- df_mensual2017 %>%
   ggplot(aes(x = PROVINCIA , y = P_MES)) +
   geom_boxplot() +
-  labs(title = "Precipitaciones Medias por Provincia Outliers", x = "Provincia", y = "Precipitaciones") +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  labs(title = "Precipitaciones Medias por Provincia Outliers", x = "Provincia", y = "Precipitaciones") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1),plot.margin = margin(1, 1, 2, 2, "cm"))
 
 grafico_outliers_pmes
 
@@ -331,31 +379,41 @@ for (df_names in names(dataframes_mensuales)) {
 }
 ```
 
-De cara al estudio de los outliers, primero se decidio hacer un estudio visual mediante el graficado de distintos graficos de caja, para cada una de las variables, para el año 2017.
 
-Tras la representación se definio una funcion para calcular todos los outliers de 2017, dicha funcion se define haciendo uso del metodo de boxplot, el cual consiste en definir los cuantiles y los valores que se salgan tanto por el primer cuantil como por el tercer cuantil son los que la funcion determina como outliers. Una vez detectados los meses y las provincias de los outliers se investigo si dichos outliers tenian sentido, tras una extensa busqueda se llego a la conclusion de que los outliers obtenidos se debian a tormentas, olas de calor y mas eventos climatologicos.
+```{r echo=FALSE}
+df_mensual2022 %>%
+  ggplot(aes(x = PROVINCIA , y = P_MES, fill = PROVINCIA)) +
+  geom_boxplot() +
+  labs(title = "Precipitaciones Medias por Provincia Outliers",
+       x = "Provincia", y = "Precipitaciones") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+        legend.position = "none",plot.margin = margin(1, 1, 2, 2, "cm"))
+```
 
-Una vez detectados los outliers se amplio el rango de la funcion para todos los años.
+De cara al estudio de los outliers, primero se decidió hacer una visualización mediante el graficado de distintos boxplot, para cada una de las variables, para el año 2022 (se puede observar lo mismo para el resto de variables y años en el .Rmd)
 
-Tras la identificacion de en que consistian los outliers se decidio dejarlos ya que pueden ser de interes para un estudio.
-
+Tras la representación se definió una función para calcular todos los outliers de 2022, dicha función se define haciendo uso del método de boxplot, el cuál consiste en definir los cuantiles y los valores que se salgan tanto por el primer cuantil como por el tercer cuantil, que son los que la función determina como outliers. Una vez detectados los meses y las provincias de los outliers se investigó si dichos outliers eran coherentes en el contexto a estudiar. Tras una extensa búsqueda, se llegó a la conclusión de que dichos outliers podrían deberse a tormentas, olas de calor y más eventos climatológicos, por lo que consideramos no descartarlos para nuestro análisis. Sea como fuere, el estudio de estos outliers en concreto escapa de los objetivos de nuestro trabajo.
 
 
 ## Estadísticos
 
-```{r}
+En este apartado calculamos para cada año y para cada Indicativo los estadísticos de cada variable: la media, la mediana, la desviación típica, el rango intercuartílico, y la desviación media absoluta.
+
+Lo hacemos de dos formas distintas: primero calculamos los estadísticos para cada indicativo y después hacemos lo mismo pero para todo el territorio español y mensualmente. Igual que en el resto de apartados, almacenamos todos los resultados en una lista y en cada elemento de la lista se encuentran los datos para cada año.
+
+```{r include=FALSE}
 estadisticos_indicativo <- list()
 estadisticos_meses <- list()
 
-años <- 2016:2022
+años <- 2017:2022
 
 for (i in seq_along(dataframes_mensuales)) {
   df_año <- dataframes_mensuales[[i]]
-  df_año$Indicativo <- factor(df_año$Meses, levels = c("enero", "febrero", "marzo", 
+  df_año$Meses <- factor(df_año$Meses, levels = c("enero", "febrero", "marzo", 
                                                        "abril", "mayo", "junio", "julio", "agosto" ,
                                                        "septiembre", "octubre", "noviembre",
                                                        "diciembre"))
-  df_año$Meses <- factor(df_año$Meses)
+  df_año$Indicativo <- factor(df_año$Indicativo)
 
   esta_por_indicativo <- df_año %>%
     group_by(Indicativo) %>%
@@ -381,29 +439,33 @@ for (i in seq_along(dataframes_mensuales)) {
   nombre_mes <- paste0("esta_por_mes_", años[i])
   estadisticos_meses[[nombre_mes]] <- esta_por_mes
 }
-
-
 ```
 
-
-# Análisis Univariado
-<<<<<<< HEAD
-Tras el analisis de los outliers y los estadisticos de nuestro dataset, se empieza a hacer un estudio univariado de las distintas variables de interes.
-=======
-
-El análisis univariante que podemos realizar para nuestro conjunto de datos está limitado a las variables numéricas, ya que no contamos con variables categóricas. El estudio más represenativo para nuestros datos consiste en estudiar la evolución de las precipitaciones y las temperaturas mensuales para los años de los que tenemos información, desde 2017 hasta 2022. Hemos rechazado incluir los datos de 2016 por no aportar más información al análisis y así evitar saturar nuestros gráficos.
->>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
+Por ejemplo, los estadísticos para cada uno de los indicativos en el último año se tienen guardados de la siguiente manera:
 
 ```{r}
+head(estadisticos_indicativo[["esta_por_indicativo_2022"]])
+head(estadisticos_meses[["esta_por_mes_2022"]])
+```
+
+# Análisis Univariado
+
+Tras el analisis de los outliers y los estadisticos de nuestro dataset, se empieza a hacer un estudio univariado de las distintas variables de interes.
+
+
+El análisis univariante que podemos realizar para nuestro conjunto de datos está limitado a las variables numéricas, ya que no contamos con categóricas. El estudio más represenativo para nuestros datos consiste en estudiar la evolución de las precipitaciones y las temperaturas mensuales para los últimos años.
+
+
+```{r echo=FALSE, warning=FALSE}
 #COMPLETO 2016:2022
 library(ggthemes)
 
-lluvias_2022 <- df_mensual2022 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2022)
-lluvias_2021 <- df_mensual2021 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2021)
-lluvias_2020 <- df_mensual2020 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2020)
-lluvias_2019 <- df_mensual2019 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2019)
-lluvias_2018 <- df_mensual2018 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2018)
-lluvias_2017 <- df_mensual2017 %>% group_by(Meses)%>% summarise(prom_HR = mean(HR))%>%mutate(Año = 2017)
+lluvias_2022 <- df_mensual2022 %>% group_by(Meses)%>% summarise(prom_HR = mean(P_MES))%>%mutate(Año = 2022)
+lluvias_2021 <- df_mensual2021 %>% group_by(Meses)%>% summarise(prom_HR = mean(P_MES))%>%mutate(Año = 2021)
+lluvias_2020 <- df_mensual2020 %>% group_by(Meses)%>% summarise(prom_HR = mean(P_MES))%>%mutate(Año = 2020)
+lluvias_2019 <- df_mensual2019 %>% group_by(Meses)%>% summarise(prom_HR = mean(P_MES))%>%mutate(Año = 2019)
+lluvias_2018 <- df_mensual2018 %>% group_by(Meses)%>% summarise(prom_HR = mean(P_MES))%>%mutate(Año = 2018)
+lluvias_2017 <- df_mensual2017 %>% group_by(Meses)%>% summarise(prom_HR = mean(P_MES))%>%mutate(Año = 2017)
 
 
 lluvias <- bind_rows(lluvias_2022,lluvias_2021, lluvias_2020,lluvias_2019)
@@ -415,15 +477,14 @@ precipitaciones = ggplot(lluvias, aes(x = Meses, y = prom_HR, group = Año))+geo
 precipitaciones
 
 ```
-<<<<<<< HEAD
-En esta primera grafica se representa la variacion de las temperaturas a lo largo de los meses para los años 2019,2020,2021,2022. Se puede observar una clara tendencia de disminucion entre los meses mas calientes, mientras que cuando se acerca el otoño y el invierno las precipitaciones aumentan.
+
+
+En esta primera grafica se representa la variacion de las temperaturas a lo largo de los meses para los años 2019,2020,2021,2022. Se puede observar una clara tendencia de disminución entre los meses más calientes, mientras que cuando se acerca el otoño y el invierno las precipitaciones aumentan.
 Otra cosa destacable es que a medida que pasan los años se puede observar que las precipitaciones aumentan de manera general.
-=======
 
-Puede apreciarse una bajada considerable de las precipitaciones en España en 2022 con respecto a los dos últimos años anteriores, equiparándose a las precipitaciones del año 2019. Procedemos análogamente con las temperaturas máxima y media.
+Puede apreciarse una bajada considerable de las precipitaciones en España en 2022 con respecto a los dos últimos años anteriores, equiparándose a las precipitaciones del año 2019. Análogamente con las temperaturas máxima y media.
 
->>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
-```{r}
+```{r warning=FALSE, include=FALSE}
 tmax_2022 <- df_mensual2022 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2022)
 tmax_2021 <- df_mensual2021 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2021)
 tmax_2020 <- df_mensual2020 %>% group_by(Meses)%>%summarise(prom_tmax = mean(TM_MAX))%>%mutate(Año = 2020)
@@ -438,7 +499,7 @@ maximas = ggplot(tmaximas, aes(x = Meses, y = prom_tmax, group = Año))+geom_lin
 maximas
 ```
 
-```{r}
+```{r warning=FALSE, include=FALSE}
 tmed_2022 <- df_mensual2022 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2022)
 tmed_2021 <- df_mensual2021 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2021)
 tmed_2020 <- df_mensual2020 %>% group_by(Meses)%>%summarise(prom_tmed = mean(TM_MES))%>%mutate(Año = 2020)
@@ -452,20 +513,22 @@ tmed$Meses <- factor(tmed$Meses, levels = c("enero", "febrero", "marzo", "abril"
 medias = ggplot(tmed, aes(x = Meses, y = prom_tmed, group = Año))+geom_line(aes(linetype =  factor(Año),color=factor(Año)),size = 1, alpha = 0.7) + labs(title = "Temperaturas medias", subtitle = "España 2022", x = "Meses", y = "Temperatura (ºC)")+ theme_fivethirtyeight() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(legend.title=element_blank()) + scale_color_brewer(palette = "Set2")
 medias
 ```
-<<<<<<< HEAD
-En las dos graficas siguientes se puede observar tanto la temperatura maxima como la temperatura media a lo largo de los años en toda España, se observa que los meses mas calidos son de septiembre a agosto mientras que en el resto de meses la temperatura disminuye por debajo de los 15 grados. 
 
-=======
+En las dos gráficas anteriores se puede observar tanto la temperatura máxima como la temperatura media a lo largo de los años en toda España, se observa que los meses mas cálidos son de septiembre a agosto mientras que en el resto de meses la temperatura disminuye por debajo de los 15 grados. 
+
 
 Al comparar con los resúmenes estacionales climatológicos de AEMET para 2022 [*] (referenciar) vemos que los datos que representamos se mantienen coherentes con los expuestos en los resúmenes oficiales, por lo que nos inclinamos a pensar que la imputación de los datos por parte de la librería empleada es válida.
->>>>>>> 172fe2f21999c584bf16b5f46c9110f7830978b5
+
+
 # Análisis Bivariado
 
-```{r}
+Después de análizar cada una de las variables individualmente, tiene sentido pensar que algunas de ellas guardan cierto grado de relación entre ellas. Es el punto de estudiar esta relación. Empezamos con un análisis numérico, para ello calculamos la matriz de Correlación de Pearson, la matriz de Correlación de Spearman y la matriz de Covarianzas para cada uno de los años.
+
+```{r warning=FALSE, include=FALSE}
 correlacion_pearson <- list()
 correlacion_spearman <- list()
 covarianzas <- list()
-años <- 2016:2022
+años <- 2017:2022
 
 for (i in seq_along(dataframes_mensuales)) {
   df_año <- dataframes_mensuales[[i]]
@@ -492,8 +555,10 @@ for (i in seq_along(dataframes_mensuales)) {
 
 ```
 
+Hemos almacenado en las listas `correlacion_pearson`, `correlacion_spearman` y `covarianzas` las matrices correspondientes, cada elemento de cada lista se corresponde con la respectiva matriz relativa a cada año de nuestro estudio. Analizaremos estos resultado más adelante, primero veamos estos resultados año por año gráficamente con la función `corrplot`. 
 
-```{r}
+
+```{r warning=FALSE, include=FALSE}
 # Configurar el diseño de la ventana gráfica
 par(mfrow = c(3, 3))
 library(corrplot)
@@ -508,14 +573,14 @@ par(mfrow = c(1, 1))
 ```
 
 
-Vemos que, en general, estes gráficos que representan la correlación entre las variables son prácticamente iguales para cada año, por lo tanto, vamos a centrarnos en los datos del año $2022$, para realizar un análisis más concreto y preciso.
+Vemos que la correlación entre las variables son prácticamente iguales para cada año, por lo tanto, vamos a centrarnos en los datos del año $2022$, para realizar un análisis más concreto y preciso.
 
 
 ```{r}
 corrplot(correlacion_pearson[["correlacion_pearson_2022"]], type = "lower", diag = FALSE)
 ```
 
-Por entender un poco mejor lo que nos quiere decir esta gráfica, cuan más grande es el círculo situado en las correspondientes casillas de las variables, más fuerte es la relación entre ellas (en azul si dicha correlación es lineal positiva y en rojo si es negativa). Cuanto más se reduce el tamaño del círculo, esto indica que la correlación entre las variables disminuye.
+Para entender un poco mejor lo que nos quiere decir esta gráfica, cuan más grande es el círculo situado en las correspondientes casillas de las variables, más fuerte es la relación entre ellas (en azul si dicha correlación es lineal positiva y en rojo si es negativa). Cuanto más se reduce el tamaño del círculo, esto indica que la correlación entre las variables disminuye.
 
 Por lo tanto, las conclusiones que extraemos de analizar este gráfico son las siguientes:
 
@@ -531,37 +596,35 @@ Por lo tanto, las conclusiones que extraemos de analizar este gráfico son las s
   
 * Por lo demás, las relaciones más destacables (teniendo en cuenta el objetivo de nuestro estudio) que extraemos del gráfico son las siguientes:
 
-  * insolacion y precipitaciones medias
-  * insolacion y humedad
-  * temperatura maxima y precipitacion mes
-  * temperatura maxima y humedad
-  * temperatura maxima e insolacion
+  * Insolacion y Precipitaciones medias mensuales.
+  * Insolacion y Humedad.
+  * Temperatura máxima y Precipitaciones medias mensuales.
+  * Temperatura máxima y Humedad.
+  * Temperatura máxima e Insolacion
 
 Además de centrarnos en el gráfico, echemos un ojo a la matriz de correlaciones, tanto de Pearson como la de Spearman y la matriz de covarianzas.
 
 
 * Coeficiente de Correlación de Pearson: Mide la fuerza y dirección de una relación lineal.
 
-```{r}
+```{r echo=FALSE}
 correlacion_pearson[["correlacion_pearson_2022"]]
 ```
 
-* Coeficiente de Correlación de Spearman: Evalúa la relación monótona entre dos variables.
+* Coeficiente de Correlación de Spearman: Evalúa la relación monótona entre las dos variables consideradas.
 
-```{r}
+```{r echo=FALSE}
 correlacion_spearman[["correlacion_spearman_2022"]]
 ```
 
-* Matriz de covarianzas.
-
-```{r}
+```{r eval=FALSE, include=FALSE}
 covarianzas[["covarianzas_2022"]]
 ```
 
 Iniciamos el analisis de la correlacion para el año $2022$:
 
 
-```{r}
+```{r include=FALSE}
 d_22<-dataframes_mensuales[["df_mensual2022"]]
 HR<-dataframes_mensuales[["df_mensual2022"]]%>%
   select(Indicativo,Meses,HR)
@@ -575,87 +638,183 @@ T_MES<-dataframes_mensuales[["df_mensual2022"]]%>%
   select(Indicativo,Meses,TM_MES)
 ```
 
-```{r}
+```{r eval=FALSE, warning=FALSE, include=FALSE}
 correlation_matrix <- cor(d_22[, c("HR", "P_MES", "INSO", "TM_MAX")])
 heatmap(correlation_matrix)
-
 ```
 
 
-  * Insolacion y Precipitaciones medias
-  
-```{r}
+```{r echo=FALSE, warning=FALSE}
+library(viridis)  # Para paletas de colores
+
+# Crear un factor para los niveles de precipitación
+d_22$Precipitation_Level <- cut(d_22$P_MES, breaks = 3)
+
+# Boxplot con ggplot2
+ggplot(d_22, aes(x = Precipitation_Level, y = INSO, fill = Precipitation_Level)) +
+  geom_boxplot(color = "black", outlier.shape = NA) +  # Estilo del boxplot
+  scale_fill_viridis(discrete = TRUE) +  # Paleta de colores
+  labs(title = "Boxplot de Insolación por Niveles de Precipitación",
+       x = "Niveles de Precipitación",
+       y = "Insolación") +
+  theme_minimal() +  # Estilo del tema
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),plot.margin = margin(1, 1, 2, 2, "cm"))
+
+```
+
+```{r echo=FALSE, message=FALSE}
 library(ggplot2)
-ggplot(d_22, aes(x=INSO, y=P_MES)) +
-  geom_point() +
-  geom_smooth(method="lm", se=FALSE, color="blue") +
-  labs(title="Scatter Plot con Línea de Regresión", x="Insolación", y="Precipitación Media")
+ggplot(d_22, aes(x=INSO, y=HR)) +
+  geom_point(colour = "skyblue") +
+  geom_smooth(method="lm", se=FALSE, color="red") +
+  labs(title="Scatter Plot con Línea de Regresión (Insolacion vs Humedad)",
+       x="Insolación", y="Humedad relativa") + 
+  theme(plot.margin = margin(1, 1, 2, 2, "cm"))
 
 ```
 
 
-```{r}
-boxplot(d_22$INSO ~ cut(d_22$P_MES, breaks=3), 
-        main="Boxplot de Insolación por Niveles de Precipitación", 
-        xlab="Niveles de Precipitación", ylab="Insolación")
-
-```
-
-
-  * Insolacion y Humedad
-  
-```{r}
-ggplot(d_22, aes(x=HR, fill=INSO)) +
-  geom_bar(position="stack") +
-  labs(title="Gráfico de Barras Apiladas", x="Humedad", y="Frecuencia", fill="Insolación")
-
-```
-  
-  * Temperatura Maxima y Precipitacion mes
-  
-```{r}
-ggplot(d_22, aes(x=TM_MAX, y=P_MES)) +
-  geom_density_2d() +
-  labs(title="Gráfico de Contorno o Densidad", x="Temperaturas", y="Precipitación Media")
-
-```
-
-  
-  * Temperatura Maxima y Humedad
-  
-```{r}
-ggplot(d_22, aes(x=HR, y=TM_MAX, fill=HR)) +
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(d_22, aes(x=HR, y=TM_MAX)) +
   geom_violin() +
-  labs(title="Diagrama de Violín", x="Humedad", y="Insolación", fill="Humedad")
-
+  labs(title="Diagrama de Violín (Temperatura máxima vs Humedad)", x="Humedad", y="Insolación", fill="Humedad")+ 
+  theme(plot.margin = margin(1, 1, 2, 2, "cm"))
 ```
 
-  
-  * Temperatura Maxima e Insolacion
-  
 ```{r}
 ggplot(d_22, aes(x=TM_MAX, y=INSO, size=INSO)) +
-  geom_point(alpha=0.7,col="lightblue",fill="black") +
-  labs(title="Gráfico de Burbujas", x="Temperaturas", y="Insolación", size="Temperaturas")
+  geom_point(alpha=0.5,col="red",fill="black") +
+  labs(title="Gráfico de Burbujas (Temperatura Máxima vs Insolación)",
+       x="Temperaturas", y="Insolación", size="Temperaturas") +
+  theme(plot.margin = margin(1, 1, 2, 2, "cm"))
 ```
 
   
-```{r}
+```{r message=FALSE}
+library(GGally)
 pares<-dataframes_mensuales[["df_mensual2022"]]%>%
-  select(HR,INSO,P_MES,TM_MAX,TM_MES,TM_MIN,W_MED)
+  select(HR,INSO,P_MES,TM_MAX,TM_MES,TM_MIN)
 ggpairs(pares)
-#,ggplot2::aes(col="black",fill = "lightblue"
 ```
 
+Con las representaciones hechas para continuar el análiss de correlación entre variables, reafirmamos las conclusiones obtenidas tras el análisis del diagrama del gráfico de correlaciones.
 
 
-# Visualización de los datos
 
-### Mapa interactivo
+```{r}
+library(ggplot2)
+ggplot(d_22, aes(x=TM_MES, y=P_MES)) +
+  geom_point(colour = "skyblue")  +
+  labs(x="Insolación", y="Humedad relativa") + 
+  theme(plot.margin = margin(1, 1, 2, 2, "cm"))
+```
+
+# Conclusiones
+
+Tras el análisis que hemos hecho de los datos de los que partíamos, y teniendo en cuenta que nuestro objetivo era analizar la variación de las  precipitaciones y la temperatura en el territorio español.
+
+Al comparar con los resúmenes estacionales climatológicos de AEMET para 2022 vemos que los datos que representamos se mantienen coherentes con los expuestos en los resúmenes oficiales, por lo que nos inclinamos a pensar que la imputación de los datos por parte de la librería empleada es válida.
+
+Puede apreciarse una bajada considerable de las precipitaciones en España en 2022 con respecto a los dos últimos años anteriores, equiparándose a las precipitaciones del año 2019 que se corresponden con las épocas de sequía.
+
+Por otra parte, hemos comprobado que las rachas de viento que atraviesan España en cada una de las comunidades no guarda relación con la temperatura y las precipitaciones, ni con ninguna de las otras variables de estudio, por lo que pueden descartarse del análisis.
+
+La `Insolación` se relaciona con la `Temperatura` de forma lineal con correlación positiva como era de esperar: zonas con mayor exposición solar diaria tienden a tener unas temperaturas generalmente mayores que las zonas que cuentan con menos horas de sol. Lo contrario ocurre entre la `Insolación` y las `Precipitaciones`, que muestran una relación lineal negativa. Puede entenderse este caso en zonas de España como Galicia, que cuenta con un mayor índice de precipitaciones a lo largo del año y a su vez tiene menos horas de sol (mayor nubosidad).
+
+NOTA: sacar las mayores precipitaciones por indicativos y ver su variación con los años.
+
+```{r}
+
+lista_datasets <- list(df_mensual2022,df_mensual2021,df_mensual2020,df_mensual2019,df_mensual2018,df_mensual2017)
+resultados_precipitaciones <- list()
+resultados_temperatura <- list()
+
+for (i in seq_along(lista_datasets)) {
+ 
+  datos_actual <- lista_datasets[[i]]
+  
+  
+  maximos_por_provincia_mes <- datos_actual %>%
+    group_by(PROVINCIA, Meses) %>%
+    summarize(Max_Precipitacion = max(P_MES, na.rm = TRUE))  
+  
+ 
+  resultados_precipitaciones[[i]] <- maximos_por_provincia_mes
+}
+
+for (i in seq_along(lista_datasets)) {
+ 
+  datos_actual2 <- lista_datasets[[i]]
+  
+  
+  maximos_por_provincia_mes2 <- datos_actual2 %>%
+    group_by(PROVINCIA, Meses) %>%
+    summarize(Max_Temperatura = max(TM_MES, na.rm = TRUE))  
+  
+ 
+  resultados_temperatura[[i]] <- maximos_por_provincia_mes2
+}
+
+
+nombres_dataframes1 <- paste0("df_precipitaciones", seq_along(resultados_precipitaciones))  # Nombres para los dataframes
+
+list2env(setNames(resultados_precipitaciones, nombres_dataframes1), envir = .GlobalEnv)
+
+nombres_dataframes2 <- paste0("df_temperaturas", seq_along(resultados_temperatura))  # Nombres para los dataframes
+
+list2env(setNames(resultados_temperatura, nombres_dataframes2), envir = .GlobalEnv)
+
+library(dplyr)
+
+# # Crear una lista con los nombres de los dataframes
+# lista_dataframes <- mget(ls(pattern = "df_precipitaciones\\d+"))  # Obtener los dataframes con nombres df_1, df_2, ...
+# 
+# # Unir los dataframes en un único dataframe
+# resultado_final <- bind_rows(lista_dataframes, .id = "Año")
+# resultado_final$Año <- factor(resultado_final$Año)
+
+
+p8 <- ggplot(df_precipitaciones1, aes(x = PROVINCIA, y = Max_Precipitacion, color = Meses)) + 
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)
+        ,plot.margin = margin(1, 1, 2, 2, "cm"))
+p8
+
+p6 <-ggplot(df_temperaturas1, aes(x = PROVINCIA, y = Max_Temperatura, color = Meses)) + 
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)
+        ,plot.margin = margin(1, 1, 2, 2, "cm"))
+
+
+p6
+
+```
+
+```{r}
+ggplot(df_precipitaciones1, aes(x = PROVINCIA, y = Max_Precipitacion, color = Meses)) + 
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)
+        ,plot.margin = margin(1, 1, 2, 2, "cm"))
+
+
+ggplot(df_temperaturas1, aes(x = PROVINCIA, y = Max_Temperatura, color = Meses)) + 
+  geom_point() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)
+        ,plot.margin = margin(1, 1, 2, 2, "cm"))
+
+```
+
+En estas gráficas se puede observar que que los meses con mayor numero de precipitaciones son en el mes de Diciembre y la provincia donde mas llueve es en Ourense. Mientras que para las temperaturas se observa que los meses mas calidos seria Agosto y manteniendo un constante en toda España.
+
+# Anexo
+
+## Mapa Interactivo
 
 En el mapa interactivo se muestran las estaciones meteorológicas donde se tomaron los datos para cada año correspondiente. Mostramos el municipio donde se ubican y algunas variables anuales de las mismas.
 
-```{r}
+```{r echo=FALSE}
+
+
 mapa_espana <- leaflet() %>%
   addTiles() %>%
   setView(lng = -4, lat = 40, zoom = 6) %>% addCircles(lng = df_anual2022$LONGITUD, lat = df_anual2022$LATITUD, data = df_anual2022,radius = 5, popup = paste0(
@@ -669,198 +828,88 @@ mapa_espana <- leaflet() %>%
 mapa_espana
 
 
+
 ```
 
+## Gráficos Animados
+En estas graficas se pueden observar las variaciones mensuales de las variables de interes de nuestro estudio para las provincias del territorio español.
 
+```{r echo=FALSE}
 #Graficas animadas para cada mes
-```{r}
+
 p <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = P_MES, group = Meses)) +
   geom_line() +
-  labs(title = 'Precipitaciones por Provincia', x = 'Provincia', y = 'Precipitaciones') +
+  labs(title = 'Precipitaciones por Provincia (mm)', x = 'Provincia', y = 'Precipitaciones') +
   theme_minimal()+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 
 # Añade la animación por año
-p_animada <- p + transition_states(Meses, transition_length = 2, state_length = 1)
+p_animada <- p + transition_states(Meses, transition_length = 2, state_length = 3)
 anim_save("p_animada.gif", animation = p_animada, renderer = gifski_renderer())
 
 browseURL("p_animada.gif")
+```
 
+
+```{r eval=FALSE, include=FALSE}
 tmes <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = TM_MES, group = Meses)) +
   geom_line() +
-  labs(title = 'Temperatura Media por Provincia', x = 'Provincia', y = 'Temperatura Media') +
+  labs(title = 'Temperatura Media por Provincia (ºC)', x = 'Provincia', y = 'Temperatura Media') +
   theme_minimal()+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 #transition_reveal(P_MES)
 # Añade la animación por año
-TMes_animada <- tmes + transition_states(Meses, transition_length = 2, state_length = 1)
+TMes_animada <- tmes + transition_states(Meses, transition_length = 4, state_length = 3)
 anim_save("TMes_animada.gif", animation = TMes_animada, renderer = gifski_renderer())
 
 browseURL("TMes_animada.gif")
 
+```
 
-tmmin <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = TM_MIN, group = Meses)) +
-  geom_line() +
-  labs(title = 'Temperatura Media Minima por Provincia', x = 'Provincia', y = 'Temperatura Media Minima') +
-  theme_minimal()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-#transition_reveal(P_MES)
-# Añade la animación por año
-TMmin_animada <- tmmin + transition_states(Meses, transition_length = 2, state_length = 1)
-anim_save("TMmin_animada.gif", animation = TMmin_animada, renderer = gifski_renderer())
-
-browseURL("TMmin_animada.gif")
-
-tmmax <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = TM_MAX, group = Meses)) +
-  geom_line() +
-  labs(title = 'Temperatura Media Máxima por Provincia', x = 'Provincia', y = 'Temperatura Media Máxima') +
-  theme_minimal()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-#transition_reveal(P_MES)
-# Añade la animación por año
-TMmax_animada <- tmmax + transition_states(Meses, transition_length = 2, state_length = 1)
-anim_save("TMmax_animada.gif", animation = TMmax_animada, renderer = gifski_renderer())
-
-browseURL("TMmax_animada.gif")
-
+```{r echo=FALSE}
 hr <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = HR, group = Meses)) +
   geom_line() +
-  labs(title = 'Humedad Relativa por Provincia', x = 'Provincia', y = 'Humedad Relativa') +
+  labs(title = 'Humedad Relativa por Provincia (%)', x = 'Provincia', y = 'Humedad Relativa') +
   theme_minimal()+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 #transition_reveal(P_MES)
 # Añade la animación por año
-HR_animada <- hr + transition_states(Meses, transition_length = 2, state_length = 1)
+HR_animada <- hr + transition_states(Meses, transition_length = 4, state_length = 3)
 anim_save("HR_animada.gif", animation = HR_animada, renderer = gifski_renderer())
 
 browseURL("HR_animada.gif")
+```
 
-
+```{r echo=FALSE}
 inso <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = INSO, group = Meses)) +
   geom_line() +
-  labs(title = 'Insolación por Provincia', x = 'Provincia', y = 'Insolación') +
+  labs(title = 'Insolación por Provincia (Horas)', x = 'Provincia', y = 'Insolación') +
   theme_minimal()+
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 #transition_reveal(P_MES)
 # Añade la animación por año
-INSO_animada <- inso + transition_states(Meses, transition_length = 2, state_length = 1)
+INSO_animada <- inso + transition_states(Meses, transition_length = 4, state_length = 3)
 anim_save("INSO_animada.gif", animation = INSO_animada, renderer = gifski_renderer())
 
 browseURL("INSO_animada.gif")
-
-
-wm <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = W_MED, group = Meses)) +
-  geom_line() +
-  labs(title = 'Viento Medio por Provincia', x = 'Provincia', y = 'Viento Medio') +
-  theme_minimal()+
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
-#transition_reveal(P_MES)
-# Añade la animación por año
-WM_animada <- wm + transition_states(Meses, transition_length = 2, state_length = 1)
-anim_save("WM_animada.gif", animation = WM_animada, renderer = gifski_renderer())
-
-browseURL("WM_animada.gif")
 ```
 
 
-#Graficas Anuales de interes
-```{r}
-dataset_anual_2 <- data.frame(df_anual2017$P_MES, df_anual2018$P_MES)
-dataset_anual_3 <- data.frame(dataset_anual_2, df_anual2019$P_MES)
-dataset_anual_4 <- data.frame(dataset_anual_3, df_anual2020$P_MES)
-dataset_anual_5 <- data.frame(dataset_anual_4, df_anual2021$P_MES)
-dataset_anual_precipitaciones <- data.frame(dataset_anual_5, df_anual2022$P_MES)
-names(dataset_anual_precipitaciones) <- c("2017","2018","2019","2020","2021","2022")
+En la primera gráfica, en la que se observan las precipitaciones, se tiene que los picos de mayor lluvia ocurren en los meses de Enero,Febrero,Noviembre y Diciembre y las zonas donde mas lluvias ocurren seria en las provincias mas al norte de España.
+
+Por otro lado en la gráfica dos se representa la temperatura media, donde los picos de mayor calor ocurren en los meses de Junio, Julio, Agosto en las provincias mas al sur de España.
+
+En la tercera gráfica, en la que se puede apreciar la humedad relativa, se observa que la humedad varia bastante en funcion de cada mes, pero las provincias que mas resaltan son  Cantabria y Lugo
+
+Para la cuarta gráfica se observa las insolacion, que varia bastante en funcion de la epoca del año destacando más en los meses de Junio, Julio y Agosto.
 
 
 
-datos_largo <- gather(dataset_anual_precipitaciones, key = "año", value = "precipitacion")
 
-
-grafica1 <- ggplot(datos_largo, aes(x = precipitacion, y = año,  color = año)) +
-  geom_line() +
-  coord_flip() +
-  scale_x_continuous(limits = c(0,550)) +
-  labs(title = "Distribución de Precipitaciones por Año",
-       x = "Precipitacion",  # Elimina la etiqueta del eje x
-       y = "Año") +
-  theme_minimal() +
-  theme(axis.text.y  = element_text(angle = 90, hjust = 1))
-
-
-grafica1
-
-grafica_animada1 <- grafica1 + transition_reveal(precipitacion)
-grafica_animada1
-anim_save("grafica_animada1", animation = grafica_animada1, renderer = gifski_renderer())
-browseURL("grafica_animada1.gif")
-
-
-
-dataset_anual_2.1 <- data.frame(df_anual2017$TM_MES, df_anual2018$TM_MES)
-dataset_anual_3.1 <- data.frame(dataset_anual_2.1, df_anual2019$TM_MES)
-dataset_anual_4.1 <- data.frame(dataset_anual_3.1, df_anual2020$TM_MES)
-dataset_anual_5.1 <- data.frame(dataset_anual_4.1, df_anual2021$TM_MES)
-dataset_anual_temperaturas <- data.frame(dataset_anual_5.1, df_anual2022$TM_MES)
-names(dataset_anual_temperaturas) <- c("2017","2018","2019","2020","2021","2022")
-
-datos_largo.1 <- gather(dataset_anual_temperaturas, key = "año", value = "temperatura")
-
-
-
-grafica2 <- ggplot(datos_largo.1, aes(x = temperatura, y = año, color = año)) +
-  geom_line() +
-  coord_flip() +
-  scale_x_continuous(limits = c(0,35)) +
-  labs(title = "Distribución de Temperatura por Año",
-       xlab = "Años",
-       ylab = "Temperatura") +
-  theme_minimal() +
-  theme(axis.text.y = element_text(angle = 90, hjust = 1))
-
-grafica2
-
-grafica_animada2 <- grafica2 + transition_reveal(temperatura)
-grafica_animada2
-anim_save("grafica_animada2.gif", animation = grafica_animada2, renderer = gifski_renderer())
-browseURL("grafica_animada2.gif")
-
-dataset_anual_2.2 <- data.frame(df_anual2017$INSO, df_anual2018$INSO)
-dataset_anual_3.2 <- data.frame(dataset_anual_2.2, df_anual2019$INSO)
-dataset_anual_4.2 <- data.frame(dataset_anual_3.2, df_anual2020$INSO)
-dataset_anual_5.2 <- data.frame(dataset_anual_4.2, df_anual2021$INSO)
-dataset_anual_inso <- data.frame(dataset_anual_5.2, df_anual2022$INSO)
-names(dataset_anual_inso) <- c("2017","2018","2019","2020","2021","2022")
-
-datos_largo.2 <- gather(dataset_anual_inso, key = "año", value = "insolacion")
-
-grafica3 <- ggplot(datos_largo.2, aes(x = insolacion, y = año, color = año)) +
-  geom_line() +
-  coord_flip() +
-  scale_x_continuous(limits = c(0,20)) +
-  labs(title = "Distribución de Insolacion por Año",
-       xlab = "Años",
-       ylab = "Insolacion") +
-  theme_minimal() +
-  theme(axis.text.y = element_text(angle = 90, hjust = 1))
-
-grafica3
-
-grafica_animada3 <- grafica3 + transition_reveal(insolacion)
-grafica_animada3
-anim_save("grafica_animada3.gif", animation = grafica_animada3, renderer = gifski_renderer())
-browseURL("grafica_animada3.gif")
-
-```
-
-# Conclusiones
 
 
 
