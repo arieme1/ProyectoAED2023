@@ -8,12 +8,8 @@ output:
     toc: true
   pdf_document:
     toc: true
-=======
-output:
-  pdf_document: default
-  html_document: default
->>>>>>> 5abf5557926ba4c39323e05f8828e2ee359a076a
----
+
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -710,8 +706,7 @@ ggpairs(pares)
 Con las representaciones hechas para continuar el análiss de correlación entre variables, reafirmamos las conclusiones obtenidas tras el análisis del diagrama del gráfico de correlaciones.
 
 
-<<<<<<< HEAD
-=======
+
 
 ```{r}
 library(ggplot2)
@@ -733,30 +728,6 @@ Por otra parte, hemos comprobado que las rachas de viento que atraviesan España
 
 La `Insolación` se relaciona con la `Temperatura` de forma lineal con correlación positiva como era de esperar: zonas con mayor exposición solar diaria tienden a tener unas temperaturas generalmente mayores que las zonas que cuentan con menos horas de sol. Lo contrario ocurre entre la `Insolación` y las `Precipitaciones`, que muestran una relación lineal negativa. Puede entenderse este caso en zonas de España como Galicia, que cuenta con un mayor índice de precipitaciones a lo largo del año y a su vez tiene menos horas de sol (mayor nubosidad).
 
-NOTA: sacar las mayores precipitaciones por indicativos y ver su variación con los años.
->>>>>>> 5abf5557926ba4c39323e05f8828e2ee359a076a
-
-```{r}
-library(ggplot2)
-ggplot(d_22, aes(x=TM_MES, y=P_MES)) +
-  geom_point(colour = "skyblue")  +
-  labs(x="Insolación", y="Humedad relativa") + 
-  theme(plot.margin = margin(1, 1, 2, 2, "cm"))
-```
-
-# Conclusiones
-
-Tras el análisis que hemos hecho de los datos de los que partíamos, y teniendo en cuenta que nuestro objetivo era analizar la variación de las  precipitaciones y la temperatura en el territorio español.
-
-Al comparar con los resúmenes estacionales climatológicos de AEMET para 2022 vemos que los datos que representamos se mantienen coherentes con los expuestos en los resúmenes oficiales, por lo que nos inclinamos a pensar que la imputación de los datos por parte de la librería empleada es válida.
-
-Puede apreciarse una bajada considerable de las precipitaciones en España en 2022 con respecto a los dos últimos años anteriores, equiparándose a las precipitaciones del año 2019 que se corresponden con las épocas de sequía.
-
-Por otra parte, hemos comprobado que las rachas de viento que atraviesan España en cada una de las comunidades no guarda relación con la temperatura y las precipitaciones, ni con ninguna de las otras variables de estudio, por lo que pueden descartarse del análisis.
-
-La `Insolación` se relaciona con la `Temperatura` de forma lineal con correlación positiva como era de esperar: zonas con mayor exposición solar diaria tienden a tener unas temperaturas generalmente mayores que las zonas que cuentan con menos horas de sol. Lo contrario ocurre entre la `Insolación` y las `Precipitaciones`, que muestran una relación lineal negativa. Puede entenderse este caso en zonas de España como Galicia, que cuenta con un mayor índice de precipitaciones a lo largo del año y a su vez tiene menos horas de sol (mayor nubosidad).
-
-NOTA: sacar las mayores precipitaciones por indicativos y ver su variación con los años.
 
 ```{r}
 
@@ -847,13 +818,9 @@ En estas gráficas se puede observar que que los meses con mayor numero de preci
 
 En el mapa interactivo se muestran las estaciones meteorológicas donde se tomaron los datos para cada año correspondiente. Mostramos el municipio donde se ubican y algunas variables anuales de las mismas.
 
-<<<<<<< HEAD
 ```{r echo=FALSE}
 
 
-=======
-```{r eval=FALSE, include=FALSE}
->>>>>>> 5abf5557926ba4c39323e05f8828e2ee359a076a
 mapa_espana <- leaflet() %>%
   addTiles() %>%
   setView(lng = -4, lat = 40, zoom = 6) %>% addCircles(lng = df_anual2022$LONGITUD, lat = df_anual2022$LATITUD, data = df_anual2022,radius = 5, popup = paste0(
@@ -876,10 +843,6 @@ En estas graficas se pueden observar las variaciones mensuales de las variables 
 ```{r echo=FALSE}
 #Graficas animadas para cada mes
 
-<<<<<<< HEAD
-=======
-```{r eval=FALSE, include=FALSE}
->>>>>>> 5abf5557926ba4c39323e05f8828e2ee359a076a
 p <- ggplot(df_mensual2017, aes(x = PROVINCIA, y = P_MES, group = Meses)) +
   geom_line() +
   labs(title = 'Precipitaciones por Provincia (mm)', x = 'Provincia', y = 'Precipitaciones') +
@@ -942,7 +905,6 @@ browseURL("INSO_animada.gif")
 ```
 
 
-<<<<<<< HEAD
 En la primera gráfica, en la que se observan las precipitaciones, se tiene que los picos de mayor lluvia ocurren en los meses de Enero,Febrero,Noviembre y Diciembre y las zonas donde mas lluvias ocurren seria en las provincias mas al norte de España.
 
 Por otro lado en la gráfica dos se representa la temperatura media, donde los picos de mayor calor ocurren en los meses de Junio, Julio, Agosto en las provincias mas al sur de España.
@@ -960,97 +922,4 @@ Para la cuarta gráfica se observa las insolacion, que varia bastante en funcion
 
 
 
-=======
-#Graficas Anuales de interes
-
-```{r eval=FALSE, include=FALSE}
-dataset_anual_2 <- data.frame(df_anual2017$P_MES, df_anual2018$P_MES)
-dataset_anual_3 <- data.frame(dataset_anual_2, df_anual2019$P_MES)
-dataset_anual_4 <- data.frame(dataset_anual_3, df_anual2020$P_MES)
-dataset_anual_5 <- data.frame(dataset_anual_4, df_anual2021$P_MES)
-dataset_anual_precipitaciones <- data.frame(dataset_anual_5, df_anual2022$P_MES)
-names(dataset_anual_precipitaciones) <- c("2017","2018","2019","2020","2021","2022")
-
-
-
-datos_largo <- gather(dataset_anual_precipitaciones, key = "año", value = "precipitacion")
-
-
-grafica1 <- ggplot(datos_largo, aes(x = precipitacion, y = año,  color = año)) +
-  geom_line() +
-  coord_flip() +
-  scale_x_continuous(limits = c(0,550)) +
-  labs(title = "Distribución de Precipitaciones por Año",
-       x = "Precipitacion",  # Elimina la etiqueta del eje x
-       y = "Año") +
-  theme_minimal() +
-  theme(axis.text.y  = element_text(angle = 90, hjust = 1))
-
-
-grafica1
-
-grafica_animada1 <- grafica1 + transition_reveal(precipitacion)
-grafica_animada1
-anim_save("grafica_animada1.gif", animation = grafica_animada1, renderer = gifski_renderer())
-browseURL("grafica_animada1.gif")
-
-
-
-dataset_anual_2.1 <- data.frame(df_anual2017$TM_MES, df_anual2018$TM_MES)
-dataset_anual_3.1 <- data.frame(dataset_anual_2.1, df_anual2019$TM_MES)
-dataset_anual_4.1 <- data.frame(dataset_anual_3.1, df_anual2020$TM_MES)
-dataset_anual_5.1 <- data.frame(dataset_anual_4.1, df_anual2021$TM_MES)
-dataset_anual_temperaturas <- data.frame(dataset_anual_5.1, df_anual2022$TM_MES)
-names(dataset_anual_temperaturas) <- c("2017","2018","2019","2020","2021","2022")
-
-datos_largo.1 <- gather(dataset_anual_temperaturas, key = "año", value = "temperatura")
-
-
-
-grafica2 <- ggplot(datos_largo.1, aes(x = temperatura, y = año, color = año)) +
-  geom_line() +
-  coord_flip() +
-  scale_x_continuous(limits = c(0,35)) +
-  labs(title = "Distribución de Temperatura por Año",
-       xlab = "Años",
-       ylab = "Temperatura") +
-  theme_minimal() +
-  theme(axis.text.y = element_text(angle = 90, hjust = 1))
-
-grafica2
-
-grafica_animada2 <- grafica2 + transition_reveal(temperatura)
-grafica_animada2
-anim_save("grafica_animada2.gif", animation = grafica_animada2, renderer = gifski_renderer())
-browseURL("grafica_animada2.gif")
-
-dataset_anual_2.2 <- data.frame(df_anual2017$INSO, df_anual2018$INSO)
-dataset_anual_3.2 <- data.frame(dataset_anual_2.2, df_anual2019$INSO)
-dataset_anual_4.2 <- data.frame(dataset_anual_3.2, df_anual2020$INSO)
-dataset_anual_5.2 <- data.frame(dataset_anual_4.2, df_anual2021$INSO)
-dataset_anual_inso <- data.frame(dataset_anual_5.2, df_anual2022$INSO)
-names(dataset_anual_inso) <- c("2017","2018","2019","2020","2021","2022")
-
-datos_largo.2 <- gather(dataset_anual_inso, key = "año", value = "insolacion")
-
-grafica3 <- ggplot(datos_largo.2, aes(x = insolacion, y = año, color = año)) +
-  geom_line() +
-  coord_flip() +
-  scale_x_continuous(limits = c(0,20)) +
-  labs(title = "Distribución de Insolacion por Año",
-       xlab = "Años",
-       ylab = "Insolacion") +
-  theme_minimal() +
-  theme(axis.text.y = element_text(angle = 90, hjust = 1))
-
-grafica3
-
-grafica_animada3 <- grafica3 + transition_reveal(insolacion)
-grafica_animada3
-anim_save("grafica_animada3.gif", animation = grafica_animada3, renderer = gifski_renderer())
-browseURL("grafica_animada3.gif")
-
-```
-
->>>>>>> 5abf5557926ba4c39323e05f8828e2ee359a076a
 
